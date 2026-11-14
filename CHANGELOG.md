@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Integration with the OrganiK Platform backend: endpoint classes, `BaseApi` gateways, JWT sign-in and sign-up, `iamInterceptor` and profiles for every bounded context.
+- Sign-up of suppliers with phone and categories, required by the supplier directory of the platform.
+- Expiration thresholds saved in the preferences of the profile.
+
+### Changed
+
+- Gateways read and write the platform resources of the minimarket or supplier of the signed-in user; unit tests keep using the in-memory seeds.
+- The minimarkets a supplier can send orders to come from the registered profiles.
+- Signing out reloads the application so the next user starts with empty stores.
+
+### Removed
+
+- Fake REST API client (Beeceptor) and its cache.
+
 ## [1.4.0] - 2026-10-07
 
 ### Added
