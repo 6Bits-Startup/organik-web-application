@@ -17,6 +17,15 @@ const ACCOUNTS_KEY = 'organik.accounts';
 /** User object as the fake API stores it: the user resource plus the password. */
 type RemoteUser = UserResource & {password?: string};
 
+/**
+ * Reads a user identifier, also from accounts saved before identifiers became numbers (e.g. `usr-7`).
+ *
+ * @param id - Identifier as it was stored.
+ */
+function toUserId(id: unknown): number {
+  return Number(String(id).replace(/^\D+/, '')) || 0;
+}
+
 /** An account created through the registration screen. */
 interface StoredAccount {
   resource: UserResource;
@@ -42,7 +51,7 @@ export class IamApi {
 
   constructor() {
     for (const account of this.readAccounts()) {
-      this.resources.push(account.resource);
+      this.resources.push({...account.resource, id: toUserId(account.resource.id)});
       this.passwords.set(account.resource.email, account.password);
     }
   }
@@ -160,7 +169,7 @@ export class IamApi {
             continue;
           }
           if (!this.resources.some(candidate => candidate.email === email)) {
-            this.resources.push({...resource, email});
+            this.resources.push({...resource, id: toUserId(resource.id), email});
           }
           this.passwords.set(email, password);
         }
@@ -168,9 +177,8 @@ export class IamApi {
     );
   }
 
-  private nextUserId(): string {
-    const highest = this.resources.reduce((max, {id}) => Math.max(max, Number(id.replace('usr-', '')) || 0), 0);
-    return `usr-${highest + 1}`;
+  private nextUserId(): number {
+    return this.resources.reduce((max, {id}) => Math.max(max, id), 0) + 1;
   }
 
   private readAccounts(): StoredAccount[] {

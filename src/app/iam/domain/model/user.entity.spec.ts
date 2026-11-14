@@ -4,7 +4,7 @@ import {ROLES} from './role';
 import {User, UserProps} from './user.entity';
 
 const props = (overrides: Partial<UserProps> = {}): UserProps => ({
-  id: 'usr-3',
+  id: 3,
   fullName: ' Alexis Torres ',
   email: new EmailAddress('alexis@organik.pe'),
   role: ROLES.find(role => role.id === 'supplier')!,
@@ -33,7 +33,7 @@ describe('User', () => {
     const accepted = original.with({status: 'accepted'});
 
     expect(accepted.status).toBe('accepted');
-    expect(accepted.id).toBe('usr-3');
+    expect(accepted.id).toBe(3);
     expect(original.status).toBe('pending');
   });
 

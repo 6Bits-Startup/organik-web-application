@@ -1,3 +1,4 @@
+import {BaseEntity} from '../../../shared/domain/model/base-entity';
 import {DomainError} from '../../../shared/domain/model/domain-error';
 import {EmailAddress} from '../../../shared/domain/model/email-address';
 import {ModuleKey, Role} from './role';
@@ -9,7 +10,7 @@ export type UserStatus = 'accepted' | 'pending';
  * Data required to build a {@link User}.
  */
 export interface UserProps {
-  id: string;
+  id: number;
   fullName: string;
   email: EmailAddress;
   role: Role;
@@ -27,8 +28,8 @@ export interface UserProps {
 /**
  * Represents a person who can sign in to OrganiK with a role.
  */
-export class User {
-  #id: string;
+export class User implements BaseEntity {
+  #id: number;
   #fullName: string;
   #email: EmailAddress;
   #role: Role;
@@ -45,7 +46,7 @@ export class User {
    * @throws DomainError if the identifier or the name is blank, or the role cannot access the assigned module.
    */
   constructor(props: UserProps) {
-    if (!props.id.trim() || !props.fullName.trim()) {
+    if (!Number.isInteger(props.id) || props.id <= 0 || !props.fullName.trim()) {
       throw new DomainError('A user needs an identifier and a full name');
     }
     if (props.role.accessTo(props.assignedModule) === 'none') {
@@ -64,10 +65,10 @@ export class User {
   }
 
   /**
-   * Gets the ID of the user, e.g. `usr-1`.
+   * Gets the ID of the user.
    * @returns The ID.
    */
-  get id(): string {
+  get id(): number {
     return this.#id;
   }
 
@@ -75,7 +76,7 @@ export class User {
    * Sets the ID of the user.
    * @param value The new ID.
    */
-  set id(value: string) {
+  set id(value: number) {
     this.#id = value;
   }
 

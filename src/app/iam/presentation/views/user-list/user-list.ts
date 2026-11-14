@@ -81,7 +81,7 @@ export class UserList implements OnInit {
    *
    * @param id - Identifier of the user.
    */
-  protected resend(id: string): void {
+  protected resend(id: number): void {
     this.store.resendInvitation(id).subscribe(user => {
       this.notifier.success('iam.users.invitation-resent', {email: user.email.toString()});
     });

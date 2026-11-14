@@ -62,7 +62,7 @@ export class UsersStore {
    *
    * @param id - User identifier.
    */
-  findById(id: string): User | undefined {
+  findById(id: number): User | undefined {
     return this.usersSignal().find(user => user.id === id);
   }
 
@@ -89,7 +89,7 @@ export class UsersStore {
    * @param command - Data collected by the form.
    * @throws DomainError if the user does not exist, the e-mail belongs to someone else or the data is invalid.
    */
-  updateUser(id: string, command: SaveUserCommand): Observable<User> {
+  updateUser(id: number, command: SaveUserCommand): Observable<User> {
     const existing = this.findById(id);
     if (!existing) {
       throw new DomainError(`User ${id} does not exist`);
@@ -112,7 +112,7 @@ export class UsersStore {
    * @param id - Identifier of the user.
    * @throws DomainError if the user does not exist or already accepted the invitation.
    */
-  resendInvitation(id: string): Observable<User> {
+  resendInvitation(id: number): Observable<User> {
     const user = this.findById(id);
     if (!user?.canResendInvitation) {
       throw new DomainError(`User ${id} has no pending invitation`);
@@ -135,18 +135,15 @@ export class UsersStore {
     };
   }
 
-  private emailInUse(email: string, exceptUserId?: string): boolean {
+  private emailInUse(email: string, exceptUserId?: number): boolean {
     const normalized = email.trim().toLowerCase();
     return this.usersSignal().some(
       user => user.id !== exceptUserId && user.email.toString() === normalized
     );
   }
 
-  /** Identifier that follows the highest one in use, e.g. `usr-4`. */
-  private nextId(): string {
-    const highest = this.usersSignal()
-      .map(user => Number(user.id.replace(/^\D+/, '')))
-      .reduce((max, value) => (Number.isFinite(value) ? Math.max(max, value) : max), 0);
-    return `usr-${highest + 1}`;
+  /** Identifier that follows the highest one in use. */
+  private nextId(): number {
+    return this.usersSignal().reduce((max, user) => Math.max(max, user.id), 0) + 1;
   }
 }

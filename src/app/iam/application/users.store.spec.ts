@@ -45,7 +45,7 @@ describe('UsersStore', () => {
     store.createUser(command()).subscribe();
     await settleGateway();
 
-    expect(store.findById('usr-7')?.role.id).toBe('operator');
+    expect(store.findById(7)?.role.id).toBe('operator');
   });
 
   it('should refuse an e-mail that already belongs to someone', () => {
@@ -57,20 +57,20 @@ describe('UsersStore', () => {
   });
 
   it('should update a user keeping its identifier', async () => {
-    store.updateUser('usr-2', command({fullName: 'Cielo A.', email: 'cielo@organik.pe', status: 'accepted'})).subscribe();
+    store.updateUser(2, command({fullName: 'Cielo A.', email: 'cielo@organik.pe', status: 'accepted'})).subscribe();
     await settleGateway();
 
-    expect(store.findById('usr-2')?.fullName).toBe('Cielo A.');
+    expect(store.findById(2)?.fullName).toBe('Cielo A.');
     expect(store.users().length).toBe(6);
   });
 
   it('should let a user keep their own e-mail when editing', () => {
-    expect(() => store.updateUser('usr-2', command({email: 'cielo@organik.pe'}))).not.toThrow();
+    expect(() => store.updateUser(2, command({email: 'cielo@organik.pe'}))).not.toThrow();
   });
 
   it('should only resend invitations that are pending', () => {
-    expect(() => store.resendInvitation('usr-1')).toThrow(DomainError);
-    expect(() => store.resendInvitation('usr-3')).not.toThrow();
+    expect(() => store.resendInvitation(1)).toThrow(DomainError);
+    expect(() => store.resendInvitation(3)).not.toThrow();
   });
 
   it('should expose the signed-in administrator', async () => {

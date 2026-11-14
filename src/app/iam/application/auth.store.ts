@@ -18,7 +18,7 @@ export class AuthStore {
   private readonly api = inject(IamApi);
   private readonly users = inject(UsersStore);
 
-  private readonly userIdSignal = signal<string | null>(this.read());
+  private readonly userIdSignal = signal<number | null>(this.read());
 
   /** Identifier of the signed-in user, or `null` when nobody is signed in. */
   readonly userId = this.userIdSignal.asReadonly();
@@ -72,17 +72,18 @@ export class AuthStore {
     }
   }
 
-  private read(): string | null {
+  private read(): number | null {
     try {
-      return sessionStorage.getItem(STORAGE_KEY);
+      const stored = Number(sessionStorage.getItem(STORAGE_KEY)?.replace(/^\D+/, ''));
+      return Number.isInteger(stored) && stored > 0 ? stored : null;
     } catch {
       return null;
     }
   }
 
-  private write(userId: string): void {
+  private write(userId: number): void {
     try {
-      sessionStorage.setItem(STORAGE_KEY, userId);
+      sessionStorage.setItem(STORAGE_KEY, String(userId));
     } catch {
       // Storage can be unavailable (private mode); the session then only lasts while the app stays open.
     }

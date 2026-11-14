@@ -40,7 +40,7 @@ export class UserForm {
   private readonly notifier = inject(Notifier);
 
   /** Identifier of the user being edited; absent when creating one. */
-  protected readonly id = signal<string | undefined>(undefined);
+  protected readonly id = signal<number | undefined>(undefined);
 
   protected readonly roles = ROLES.map(role => role.id);
   protected readonly statuses: readonly UserStatus[] = ['pending', 'accepted'];
@@ -71,7 +71,7 @@ export class UserForm {
       }
     });
     this.route.params.subscribe(params => {
-      this.id.set(params['id']);
+      this.id.set(params['id'] ? Number(params['id']) : undefined);
       // Fill the form once the user to edit is available.
       this.store.loadUsers().subscribe(() => this.fill());
     });
