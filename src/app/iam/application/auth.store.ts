@@ -64,6 +64,7 @@ export class AuthStore {
    * Ends the session.
    */
   logout(): void {
+    this.api.signOut();
     this.userIdSignal.set(null);
     try {
       sessionStorage.removeItem(STORAGE_KEY);

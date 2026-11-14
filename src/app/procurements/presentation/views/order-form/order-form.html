@@ -5,7 +5,7 @@
         <label for="minimarket">{{ 'shipments.form.minimarket' | translate }}</label>
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <select matNativeControl id="minimarket" formControlName="minimarketId">
-            @for (minimarket of minimarkets; track minimarket.id) {
+            @for (minimarket of minimarkets(); track minimarket.id) {
               <option [value]="minimarket.id">{{ minimarket.name }}</option>
             }
           </select>

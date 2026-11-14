@@ -11,6 +11,7 @@ import {environment} from '../../../../../environments/environment';
 import {emailValidator} from '../../../../shared/presentation/forms/validators';
 import {AppFooter} from '../../../../shared/presentation/components/app-footer/app-footer';
 import {LanguageSwitcher} from '../../../../shared/presentation/components/language-switcher/language-switcher';
+import {SettingsStore} from '../../../../profiles/application/settings.store';
 import {AuthStore} from '../../../application/auth.store';
 import {AuthenticationError, AuthenticationFailure} from '../../../domain/model/authentication-error';
 
@@ -42,6 +43,7 @@ export class Login {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly settings = inject(SettingsStore);
 
   /** Page the user wanted to open before being sent to the login, bound from the query string. */
   returnUrl = input<string>();
@@ -74,7 +76,11 @@ export class Login {
     this.failure.set(null);
     this.submitting.set(true);
     this.auth.login(email, password).subscribe({
-      next: () => this.router.navigateByUrl(this.safeReturnUrl()).then(),
+      next: () => {
+        // The expiration thresholds of the signed-in user apply from now on.
+        this.settings.restore();
+        this.router.navigateByUrl(this.safeReturnUrl()).then();
+      },
       error: (error: unknown) => {
         this.submitting.set(false);
         this.failure.set(error instanceof AuthenticationError ? error.reason : 'invalid-credentials');

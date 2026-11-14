@@ -235,7 +235,8 @@ export class InventoryStore {
       location: command.location,
       notes: command.notes
     });
-    return this.api.createStockLot(lot).pipe(
+    const minimumStock = this.productsStore.findProduct(lot.productId)?.minimumStock.value ?? 0;
+    return this.api.createStockLot(lot, minimumStock).pipe(
       tap(created => this.lotsSignal.update(current => [...current, created])),
       switchMap(created =>
         this.record('registered', created.productId, created.lotCode, created.quantity.value, '', 'Lot received').pipe(map(() => created))
@@ -280,7 +281,7 @@ export class InventoryStore {
     const lot = this.requireLot(command.lotCode);
     const units = Quantity.of(command.quantity);
     const remaining = lot.discard(units);
-    return this.replaceLot(remaining).pipe(
+    return this.replaceLot(remaining, command.cause).pipe(
       switchMap(updated =>
         this.record('waste', updated.productId, updated.lotCode, units.value, command.cause, `${units.value} units lost`).pipe(map(() => updated))
       )
@@ -335,11 +336,11 @@ export class InventoryStore {
           notes: `Order ${orderId}`
         })
     );
-    return forkJoin(lots.map(lot => this.api.createStockLot(lot))).pipe(
-      tap(created => this.lotsSignal.update(current => [...current, ...created])),
-      switchMap(created =>
+    return this.api.receiveOrder(lots).pipe(
+      tap(received => this.lotsSignal.set(received)),
+      switchMap(() =>
         forkJoin(
-          created.map(lot => this.record('order-received', lot.productId, lot.lotCode, lot.quantity.value, '', `Order ${orderId} accepted`))
+          lots.map(lot => this.record('order-received', lot.productId, lot.lotCode, lot.quantity.value, '', `Order ${orderId} accepted`))
         )
       ),
       map(() => undefined)
@@ -373,9 +374,9 @@ export class InventoryStore {
     return lot;
   }
 
-  private replaceLot(lot: StockLot): Observable<StockLot> {
+  private replaceLot(lot: StockLot, wasteCause?: string): Observable<StockLot> {
     return this.api
-      .updateStockLot(lot)
+      .updateStockLot(lot, wasteCause)
       .pipe(tap(updated => this.lotsSignal.update(current => current.map(item => (item.lotCode === updated.lotCode ? updated : item)))));
   }
 

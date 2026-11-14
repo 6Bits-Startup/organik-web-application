@@ -1,4 +1,4 @@
-import {Component, computed, inject, OnInit} from '@angular/core';
+import {Component, computed, effect, inject, OnInit} from '@angular/core';
 import {AbstractControl, FormArray, NonNullableFormBuilder, ReactiveFormsModule, ValidationErrors, Validators} from '@angular/forms';
 import {Router, RouterLink} from '@angular/router';
 import {MatButton} from '@angular/material/button';
@@ -36,9 +36,20 @@ export class OrderForm implements OnInit {
   protected readonly catalog = this.suppliers.myOfferings;
 
   protected readonly form = this.fb.group({
-    minimarketId: [this.store.linkedMinimarkets[0].id, Validators.required],
+    minimarketId: ['', Validators.required],
     lines: this.fb.array([this.newLine()])
   });
+
+  constructor() {
+    // The first linked minimarket is chosen as soon as the list is loaded.
+    effect(() => {
+      const [first] = this.minimarkets();
+      const control = this.form.controls.minimarketId;
+      if (first && !control.value) {
+        control.setValue(first.id);
+      }
+    });
+  }
 
   protected get lines(): FormArray {
     return this.form.controls.lines;
