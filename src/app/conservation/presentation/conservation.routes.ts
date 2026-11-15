@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { manageGuard } from '../../iam/presentation/guards/auth.guard';
+import { manageGuard } from '../../iam/infrastructure/iam.guard';
 
 const conservationMonitoring = () =>
   import('./views/conservation-monitoring/conservation-monitoring').then(m => m.ConservationMonitoring);

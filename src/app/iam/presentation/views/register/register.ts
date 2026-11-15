@@ -1,6 +1,6 @@
-import {Component, computed, effect, inject, input, signal} from '@angular/core';
-import {NonNullableFormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
-import {Router, RouterLink} from '@angular/router';
+import {Component, computed, inject, signal} from '@angular/core';
+import {FormBuilder, ReactiveFormsModule, Validators, FormControl} from '@angular/forms';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {MatButton, MatIconButton} from '@angular/material/button';
 import {MatButtonToggle, MatButtonToggleGroup} from '@angular/material/button-toggle';
 import {MatCheckbox} from '@angular/material/checkbox';
@@ -10,7 +10,6 @@ import {MatInput} from '@angular/material/input';
 import {MatProgressSpinner} from '@angular/material/progress-spinner';
 import {TranslatePipe} from '@ngx-translate/core';
 import {environment} from '../../../../../environments/environment';
-import {emailValidator} from '../../../../shared/presentation/forms/validators';
 import {AppFooter} from '../../../../shared/presentation/components/app-footer/app-footer';
 import {LanguageSwitcher} from '../../../../shared/presentation/components/language-switcher/language-switcher';
 import {PLATFORM_API_ENABLED} from '../../../../shared/infrastructure/platform-api';
@@ -18,6 +17,7 @@ import {SuppliersStore} from '../../../../suppliers/application/suppliers.store'
 import {AuthStore} from '../../../application/auth.store';
 import {SignUpRole} from '../../../domain/model/registration';
 import {RegistrationError, RegistrationFailure} from '../../../domain/model/registration-error';
+import {EMAIL_FIELD_PATTERN} from '../../../../shared/presentation/forms/form-patterns';
 
 /** Plans offered on the landing, by segment. */
 export const PLANS: Readonly<Record<SignUpRole, readonly string[]>> = {
@@ -56,17 +56,15 @@ export const MIN_PASSWORD_LENGTH = 8;
  * Sign-up screen: creates the account of a minimarket administrator.
  */
 export class Register {
-  private readonly fb = inject(NonNullableFormBuilder);
+  private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly suppliers = inject(SuppliersStore);
+  private readonly route = inject(ActivatedRoute);
   private readonly platformEnabled = inject(PLATFORM_API_ENABLED);
 
-  /** Role chosen on the landing (`?role=supplier` or `?role=administrator`), bound from the query string. */
-  role = input<string>();
-
-  /** Plan chosen on the landing (`?plan=growth`), bound from the query string. */
-  plan = input<string>();
+  /** Plan chosen on the landing (`?plan=growth`), read from the query string. */
+  private readonly plan = signal<string | undefined>(undefined);
 
   /** Landing address; on a local network it follows the host the app was opened from. */
   protected readonly landingUrl = environment.landingUrl.replace('localhost', location.hostname);
@@ -74,14 +72,14 @@ export class Register {
   protected readonly minPasswordLength = MIN_PASSWORD_LENGTH;
 
   protected readonly form = this.fb.group({
-    fullName: ['', [Validators.required, Validators.minLength(2)]],
-    email: ['', [Validators.required, emailValidator]],
-    role: ['administrator' as SignUpRole],
-    company: ['', [Validators.required, Validators.minLength(2)]],
-    phone: [''],
-    categories: [''],
-    password: ['', [Validators.required, Validators.minLength(MIN_PASSWORD_LENGTH)]],
-    terms: [false, Validators.requiredTrue]
+    fullName: new FormControl('', {nonNullable: true, validators: [Validators.required, Validators.minLength(2)]}),
+    email: new FormControl('', {nonNullable: true, validators: [Validators.required, Validators.pattern(EMAIL_FIELD_PATTERN)]}),
+    role: new FormControl('administrator' as SignUpRole, {nonNullable: true}),
+    company: new FormControl('', {nonNullable: true, validators: [Validators.required, Validators.minLength(2)]}),
+    phone: new FormControl('', {nonNullable: true}),
+    categories: new FormControl('', {nonNullable: true}),
+    password: new FormControl('', {nonNullable: true, validators: [Validators.required, Validators.minLength(MIN_PASSWORD_LENGTH)]}),
+    terms: new FormControl(false, {nonNullable: true, validators: Validators.requiredTrue})
   });
 
   protected readonly isSupplier = computed(() => this.chosenRole() === 'supplier');
@@ -94,10 +92,6 @@ export class Register {
   });
 
   constructor() {
-    effect(() => {
-      const requested = this.role() === 'supplier' ? 'supplier' : 'administrator';
-      this.form.controls.role.setValue(requested);
-    });
     this.form.controls.role.valueChanges.subscribe(role => {
       this.chosenRole.set(role);
       // Suppliers also give the phone and categories the supplier directory needs.
@@ -106,6 +100,11 @@ export class Register {
       categories.setValidators(role === 'supplier' ? [Validators.required] : []);
       phone.updateValueAndValidity();
       categories.updateValueAndValidity();
+    });
+    // Role (`?role=supplier` or `?role=administrator`) and plan chosen on the landing.
+    this.route.queryParams.subscribe(params => {
+      this.plan.set(params['plan']);
+      this.form.controls.role.setValue(params['role'] === 'supplier' ? 'supplier' : 'administrator');
     });
   }
 

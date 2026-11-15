@@ -1,7 +1,7 @@
 import {HttpClient} from '@angular/common/http';
 import {inject, Injectable} from '@angular/core';
 import {forkJoin, map, Observable, of, switchMap} from 'rxjs';
-import {Clock} from '../../shared/domain/services/clock';
+import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {BaseApi} from '../../shared/infrastructure/base-api';
 import {respondWith} from '../../shared/infrastructure/in-memory-gateway';
 import {PLATFORM_API_ENABLED} from '../../shared/infrastructure/platform-api';
@@ -31,7 +31,7 @@ export class SuppliersApi extends BaseApi {
   private readonly offeredAssembler = inject(OfferedProductAssembler);
   private readonly suppliersEndpoint = new SuppliersApiEndpoint(this.http);
   private readonly offeredProductsEndpoint = new OfferedProductsApiEndpoint(this.http);
-  private readonly today = inject(Clock).today();
+  private readonly today = CalendarDate.today();
   private readonly resources: SupplierResource[] = this.platformEnabled ? [] : structuredClone(SUPPLIERS_SEED);
   private readonly offeredResources: OfferedProductResource[] = this.platformEnabled ? [] : offeredProductsSeed(this.today);
 

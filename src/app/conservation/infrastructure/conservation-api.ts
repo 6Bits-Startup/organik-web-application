@@ -2,7 +2,7 @@ import {HttpClient} from '@angular/common/http';
 import {inject, Injectable} from '@angular/core';
 import {forkJoin, map, Observable, of, switchMap} from 'rxjs';
 import {storedMinimarketId} from '../../iam/infrastructure/token-storage';
-import {Clock} from '../../shared/domain/services/clock';
+import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {BaseApi} from '../../shared/infrastructure/base-api';
 import {respondWith} from '../../shared/infrastructure/in-memory-gateway';
 import {PLATFORM_API_ENABLED} from '../../shared/infrastructure/platform-api';
@@ -55,7 +55,7 @@ export class ConservationApi extends BaseApi {
   private readonly storageZonesEndpoint = new StorageZonesApiEndpoint(this.http);
   private readonly storageReadingsEndpoint = new StorageReadingsApiEndpoint(this.http);
   private readonly zoneResources: StorageZoneResource[] = structuredClone(ZONES_SEED);
-  private readonly readingResources: StorageReadingResource[] = readingsSeed(inject(Clock).today());
+  private readonly readingResources: StorageReadingResource[] = readingsSeed(CalendarDate.today());
 
   /**
    * Fetches every storage zone of the minimarket.

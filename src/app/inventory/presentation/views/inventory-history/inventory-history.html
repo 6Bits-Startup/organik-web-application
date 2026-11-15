@@ -20,7 +20,7 @@
       <tbody>
         @for (event of events(); track event.id) {
           <tr>
-            <td>{{ event.occurredOn.toString() }}</td>
+            <td>{{ event.occurredOn.toString() | date:'yyyy-MM-dd' }}</td>
             <td>{{ 'inventory.event-types.' + event.type | translate }}</td>
             <td>{{ event.productName }}</td>
             <td>{{ event.lotCode ?? '—' }}</td>

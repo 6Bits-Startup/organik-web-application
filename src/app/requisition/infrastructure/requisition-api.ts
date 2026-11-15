@@ -1,7 +1,7 @@
 import {HttpClient} from '@angular/common/http';
 import {inject, Injectable} from '@angular/core';
 import {map, Observable} from 'rxjs';
-import {Clock} from '../../shared/domain/services/clock';
+import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {BaseApi} from '../../shared/infrastructure/base-api';
 import {respondWith} from '../../shared/infrastructure/in-memory-gateway';
 import {PLATFORM_API_ENABLED} from '../../shared/infrastructure/platform-api';
@@ -25,7 +25,7 @@ export class RequisitionApi extends BaseApi {
   private readonly platformEnabled = inject(PLATFORM_API_ENABLED);
   private readonly assembler = inject(SupplyRequestAssembler);
   private readonly supplyRequestsEndpoint = new SupplyRequestsApiEndpoint(this.http);
-  private readonly resources: SupplyRequestResource[] = this.platformEnabled ? [] : supplyRequestsSeed(inject(Clock).today());
+  private readonly resources: SupplyRequestResource[] = this.platformEnabled ? [] : supplyRequestsSeed(CalendarDate.today());
 
   /**
    * Fetches every supply request.

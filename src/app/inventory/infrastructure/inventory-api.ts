@@ -2,7 +2,7 @@ import {HttpClient} from '@angular/common/http';
 import {inject, Injectable} from '@angular/core';
 import {forkJoin, map, Observable, of, switchMap} from 'rxjs';
 import {storedMinimarketId} from '../../iam/infrastructure/token-storage';
-import {Clock} from '../../shared/domain/services/clock';
+import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {BaseApi} from '../../shared/infrastructure/base-api';
 import {respondWith} from '../../shared/infrastructure/in-memory-gateway';
 import {PLATFORM_API_ENABLED} from '../../shared/infrastructure/platform-api';
@@ -54,7 +54,7 @@ export class InventoryApi extends BaseApi {
 
   constructor() {
     super();
-    const today = inject(Clock).today();
+    const today = CalendarDate.today();
     this.resources = this.platformEnabled ? [] : stockLotsSeed(today);
     this.eventResources = this.platformEnabled ? [] : inventoryEventsSeed(today);
     this.offerResources = this.platformEnabled ? [] : offersSeed(today);

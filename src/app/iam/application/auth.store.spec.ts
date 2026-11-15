@@ -43,8 +43,8 @@ describe('AuthStore', () => {
     await attempt('Albino@Organik.pe', 'Organik2026!');
 
     expect(store.isAuthenticated()).toBe(true);
-    expect(store.userId()).toBe('usr-1');
-    expect(sessionStorage.getItem('organik.session')).toBe('usr-1');
+    expect(store.userId()).toBe(1);
+    expect(sessionStorage.getItem('organik.session')).toBe('1');
   });
 
   it('should answer the same way for a wrong password and an unknown e-mail', async () => {
@@ -76,7 +76,7 @@ describe('AuthStore', () => {
     await attempt('cielo@organik.pe', 'Organik2026!');
 
     TestBed.resetTestingModule();
-    expect(TestBed.inject(AuthStore).userId()).toBe('usr-2');
+    expect(TestBed.inject(AuthStore).userId()).toBe(2);
   });
 
   describe('register', () => {
@@ -95,7 +95,7 @@ describe('AuthStore', () => {
       expect(user.role.id).toBe('administrator');
       expect(user.email.toString()).toBe('rosa@vidaverde.pe');
       expect(store.userId()).toBe(user.id);
-      expect(sessionStorage.getItem('organik.session')).toBe(user.id);
+      expect(sessionStorage.getItem('organik.session')).toBe(String(user.id));
     });
 
     it('should create a supplier account that starts in the requests module', async () => {

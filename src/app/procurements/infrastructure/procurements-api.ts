@@ -4,7 +4,7 @@ import {forkJoin, map, Observable} from 'rxjs';
 import {storedUserId} from '../../iam/infrastructure/token-storage';
 import {ProfilesApiEndpoint} from '../../profiles/infrastructure/profiles-api-endpoint';
 import {ProfileResource} from '../../profiles/infrastructure/profiles-response';
-import {Clock} from '../../shared/domain/services/clock';
+import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {BaseApi} from '../../shared/infrastructure/base-api';
 import {respondWith} from '../../shared/infrastructure/in-memory-gateway';
 import {PLATFORM_API_ENABLED} from '../../shared/infrastructure/platform-api';
@@ -30,7 +30,7 @@ export class ProcurementsApi extends BaseApi {
   private readonly assembler = inject(ShipmentOrderAssembler);
   private readonly shipmentOrdersEndpoint = new ShipmentOrdersApiEndpoint(this.http);
   private readonly profilesEndpoint = new ProfilesApiEndpoint(this.http);
-  private readonly resources: ShipmentOrderResource[] = this.platformEnabled ? [] : shipmentOrdersSeed(inject(Clock).today());
+  private readonly resources: ShipmentOrderResource[] = this.platformEnabled ? [] : shipmentOrdersSeed(CalendarDate.today());
   private profiles: ProfileResource[] = [];
 
   /**

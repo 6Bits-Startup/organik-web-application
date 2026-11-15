@@ -6,7 +6,6 @@ import {MatError, MatFormField} from '@angular/material/form-field';
 import {MatInput} from '@angular/material/input';
 import {TranslatePipe} from '@ngx-translate/core';
 import {Notifier} from '../../../../communication/application/notifier';
-import {Clock} from '../../../../shared/domain/services/clock';
 import {DateTime} from '../../../../shared/domain/model/date-time';
 import {FormCard} from '../../../../shared/presentation/components/form-card/form-card';
 import {ConservationStore} from '../../../application/conservation.store';
@@ -34,7 +33,6 @@ export class ReadingForm implements OnInit {
   private readonly store = inject(ConservationStore);
   private readonly router = inject(Router);
   private readonly notifier = inject(Notifier);
-  private readonly clock = inject(Clock);
 
   protected readonly zones = this.store.zones;
 
@@ -42,7 +40,7 @@ export class ReadingForm implements OnInit {
     zoneId: ['', Validators.required],
     temperature: [0, [Validators.required, Validators.min(-50), Validators.max(60)]],
     humidity: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
-    recordedAt: [new DateTime(this.clock.now()).toDisplayString().replace(' ', 'T'), Validators.required]
+    recordedAt: [new DateTime(new Date()).toDisplayString().replace(' ', 'T'), Validators.required]
   });
 
   ngOnInit(): void {

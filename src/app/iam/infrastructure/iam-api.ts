@@ -26,6 +26,15 @@ import {UsersApiEndpoint} from './users-api-endpoint';
 /** Browser storage key where the accounts created on this device are kept (local mode). */
 const ACCOUNTS_KEY = 'organik.accounts';
 
+/**
+ * Reads a user identifier, also from accounts saved before identifiers became numbers (e.g. `usr-7`).
+ *
+ * @param id - Identifier as it was stored.
+ */
+function toUserId(id: unknown): number {
+  return Number(String(id).replace(/^\D+/, '')) || 0;
+}
+
 /** An account created through the registration screen (local mode). */
 interface StoredAccount {
   resource: UserResource;
@@ -72,7 +81,7 @@ export class IamApi extends BaseApi {
   constructor() {
     super();
     for (const account of this.readAccounts()) {
-      this.resources.push(account.resource);
+      this.resources.push({...account.resource, id: toUserId(account.resource.id)});
       this.passwords.set(account.resource.email, account.password);
     }
   }
@@ -116,7 +125,7 @@ export class IamApi extends BaseApi {
       return respondWith(user);
     }
     const email = user.email.toString();
-    const creator = this.cachedUsers.find(candidate => candidate.id === String(storedUserId()));
+    const creator = this.cachedUsers.find(candidate => candidate.id === storedUserId());
     return this.signUpEndpoint
       .signUp({username: email, password: DEMO_PASSWORD, roles: [PLATFORM_ROLES[user.role.id]]})
       .pipe(
@@ -258,7 +267,7 @@ export class IamApi extends BaseApi {
       return null;
     }
     return this.assembler.toEntityFromResource({
-      id: String(user.id),
+      id: user.id,
       fullName: profile?.fullName ?? user.username,
       email,
       role,
@@ -313,9 +322,8 @@ export class IamApi extends BaseApi {
     });
   }
 
-  private nextUserId(): string {
-    const highest = this.resources.reduce((max, {id}) => Math.max(max, Number(id.replace('usr-', '')) || 0), 0);
-    return `usr-${highest + 1}`;
+  private nextUserId(): number {
+    return this.resources.reduce((max, {id}) => Math.max(max, id), 0) + 1;
   }
 
   private readAccounts(): StoredAccount[] {
