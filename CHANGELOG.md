@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-15
+
+The web application now works with the OrganiK Platform backend 1.0.0 instead of the fake API (breaking change).
+
 ### Added
 
 - Integration with the OrganiK Platform backend: endpoint classes, `BaseApi` gateways, JWT sign-in and sign-up, `iamInterceptor` and profiles for every bounded context.
@@ -139,3 +143,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Performance Budget**: Lazy loaded the application shell to keep the initial bundle under the budget.
+
+[Unreleased]: https://github.com/6Bits-Startup/organik-web-application/compare/v2.0.0...develop
+[2.0.0]: https://github.com/6Bits-Startup/organik-web-application/compare/v1.4.0...v2.0.0
