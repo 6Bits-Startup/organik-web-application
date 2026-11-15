@@ -40,7 +40,7 @@ The identifiers in this document (US001, US002, ...) are specific to this reposi
 | **US021**     | Switch Application Language                | Shared          | `LanguageSwitcher`, `LanguageStore`, `TranslateService`, `public/i18n/en.json`, `public/i18n/es.json`               |
 | **US022**     | Navigation and Application Shell           | Shared          | `Layout`, `Sidebar`, `AppHeader`, `AppFooter`, `GlobalSearch`, `PageNotFound`, `app.routes.ts`                                    |
 | **US023**     | Graceful Error Handling and User Feedback  | Shared          | `DomainError`, `Notifier`, `FormCard`, validators, `StatusBadge`                                                     |
-| **US024**     | Use the Fake REST API with a Local Fallback | Shared         | `FakeApi`, `FAKE_API_ENABLED`, `mergeByKey`, `environment.api`, `docs/openapi-fake-api.yaml`                         |
+| **US024**     | Work with the OrganiK Platform Backend     | Shared          | `BaseApi`, `ErrorHandlingEnabledBaseType`, `*ApiEndpoint`, `PLATFORM_API_ENABLED`, `iamInterceptor`, `token-storage` |
 | **US025**     | Prototype Entry Screen                     | Shared          | `PrototypeFlow`, `InteractionLink`                                                                                   |
 | **US026**     | Update Products and Lots                   | Products, Inventory | `ProductForm` (edit), `LotForm`, `ProductsStore.updateProduct`, `InventoryStore.updateLot`, `InventoryEvent`          |
 | **US027**     | Register Waste and Offers                  | Inventory       | `WasteForm`, `OfferForm`, `StockLot.discard`, `Offer`, `InventoryStore`                                           |
@@ -49,6 +49,11 @@ The identifiers in this document (US001, US002, ...) are specific to this reposi
 | **US030**     | Supplier and Administrator Dashboards      | Dashboard       | `Dashboard`, `DashboardStore.supplierSummary`, `DashboardStore.attention`                                          |
 | **US031**     | Reading History with its Source            | Conservation    | `ConservationMonitoring`, `ConservationStore.history`, `StorageReading.source`                                       |
 | **US032**     | Scoped and Read-Only Requests              | Requisition     | `RequisitionStore`, `RequestList`, `manageGuard`, `SupplyRequest.minimarketId`                                      |
+| **US033**     | Register Storage Zones and Manual Readings | Conservation    | `ZoneForm`, `ReadingForm`, `ConservationStore.createZone`, `ConservationStore.recordReading`, `StorageZonesApiEndpoint`, `StorageReadingsApiEndpoint` |
+| **US034**     | Read and Dismiss Notifications             | Communication   | `Notification`, `AlertsStore.markAsRead`, `NotificationsApi`, `NotificationsApiEndpoint`, `AlertsOverview`             |
+| **US035**     | Offers by Lot                              | Inventory       | `OfferForm`, `Offer`, `InventoryStore.registerOffer`, `OfferAssembler`, `OffersApiEndpoint`                            |
+| **US036**     | Role Permissions over Own Business Data    | IAM             | `manageGuard`, `moduleGuard`, `UsersStore`, `storedMinimarketId`, `storedSupplierId`, `Sidebar`                        |
+| **US037**     | Sortable Tables                            | Shared          | `MatSort` in `UserList`, `ProductList`, `InventoryList`, `RequestList`, `ShipmentList`, `CatalogList`                  |
 
 ---
 
@@ -352,17 +357,17 @@ _As a user, I want clear feedback when an operation fails or an input is invalid
 
 ---
 
-## US024: Use the Fake REST API with a Local Fallback
-**Title:** Use the Fake REST API with a Local Fallback  
+## US024: Work with the OrganiK Platform Backend
+**Title:** Work with the OrganiK Platform Backend  
 **Context:** Shared  
 **Description:**  
-_As a team member, I want the application to talk to a fake REST API while the backend does not exist so that the frontend can be deployed and demonstrated._
+_As a team member, I want the application to read and write its data through the OrganiK Platform REST API so that every user works with the same persisted information._
 
 **Acceptance Criteria:**
-- **AC24.1 – Remote Resources:** Given the fake API is available, when the application loads users, products or inventory, then the data is read from and created through the API routes.
-- **AC24.2 – Fallback:** Given the API fails or answers that its daily quota is exhausted, when the application needs data, then it keeps working with its in-memory data.
-- **AC24.3 – Quota Savings:** Given an answer was obtained recently, when the application needs the same data again, then the stored answer is reused instead of sending a new request.
-- **AC24.4 – Documentation:** Given the three routes, when the team documents the services, then they are described with OpenAPI in `docs/openapi-fake-api.yaml`.
+- **AC24.1 – Remote Resources:** Given the platform is running, when the application loads or saves users, products, inventory, requests, orders, suppliers, conservation data or notifications, then it uses the platform endpoints under `platformProviderApiBaseUrl`.
+- **AC24.2 – Authenticated Requests:** Given a signed-in user, when a request is sent, then the bearer token stored at sign-in is attached; on sign-out the token and the session context are cleared.
+- **AC24.3 – Errors:** Given the platform answers with an error, when the request fails, then the endpoint reports a user-friendly message and the view keeps its current data.
+- **AC24.4 – Unit Tests:** Given the unit test environment, when `PLATFORM_API_ENABLED` is off, then the gateways keep their resources in memory and no request leaves the browser.
 
 ---
 
@@ -466,3 +471,66 @@ _As a supplier, I want to consult the needs addressed to me without being able t
 **Acceptance Criteria:**
 - **AC32.1 – Scope:** Given the requests, when a supplier opens the list, then it sees only the ones addressed to it, and a minimarket user sees its own.
 - **AC32.2 – Read-Only:** Given a supplier, when it opens the requests, then there is no button to create one and the new-request address redirects to the list.
+
+---
+
+## US033: Register Storage Zones and Manual Readings
+**Title:** Register Storage Zones and Manual Readings  
+**Context:** Conservation  
+**Description:**  
+_As an administrator or operator, I want to register the storage zones of my minimarket and record manual temperature and humidity readings so that conservation is monitored even without sensors._
+
+**Acceptance Criteria:**
+- **AC33.1 – New Zone:** Given the zone form, when a name, a type and valid temperature and humidity ranges are given, then the zone is created for the current minimarket and listed in the monitoring.
+- **AC33.2 – Invalid Range Refused:** Given a range, when its minimum is greater than its maximum, then the form refuses it.
+- **AC33.3 – Manual Reading:** Given a zone, when a reading is recorded, then it is stored with the source "manual" and the current date, and the zone status is recalculated.
+
+---
+
+## US034: Read and Dismiss Notifications
+**Title:** Read and Dismiss Notifications  
+**Context:** Communication  
+**Description:**  
+_As a user, I want to see the notifications produced by expirations, conservation incidents and orders, and mark them as read, so that I only keep pending matters in view._
+
+**Acceptance Criteria:**
+- **AC34.1 – List:** Given the notifications of my minimarket or company, when the alerts view opens, then they are listed with type, severity and date.
+- **AC34.2 – Mark as Read:** Given an unread notification, when it is marked as read, then the platform stores the change and the counter decreases.
+
+---
+
+## US035: Offers by Lot
+**Title:** Offers by Lot  
+**Context:** Inventory  
+**Description:**  
+_As an administrator or operator, I want to register an offer for a specific lot so that the discount applies only to the units about to expire._
+
+**Acceptance Criteria:**
+- **AC35.1 – Lot Offer:** Given a lot with stock, when an offer with a percentage and a period is registered, then it is linked to that lot and recorded in the history.
+- **AC35.2 – Period Validation:** Given an offer, when its end date is before its start date, then the form refuses it.
+- **AC35.3 – Active Offers:** Given the offers, when they are listed, then only the ones whose period includes today are shown as active.
+
+---
+
+## US036: Role Permissions over Own Business Data
+**Title:** Role Permissions over Own Business Data  
+**Context:** IAM  
+**Description:**  
+_As an administrator, I want each role to see only its modules and its own business data so that users of one minimarket or supplier never change the data of another._
+
+**Acceptance Criteria:**
+- **AC36.1 – Scoped Data:** Given a signed-in user, when any list is loaded, then it contains only the data of their minimarket or supplier company.
+- **AC36.2 – Read-Only Modules:** Given a role without management permission on a module, when the module opens, then its forms are hidden and their addresses redirect to the list.
+- **AC36.3 – Scoped Users:** Given an administrator, when the users list opens, then it shows only the users of their minimarket, and new users are created inside it.
+- **AC36.4 – Shared Thresholds:** Given the expiration thresholds, when they are saved, then they apply to every user of the same minimarket.
+
+---
+
+## US037: Sortable Tables
+**Title:** Sortable Tables  
+**Context:** Shared  
+**Description:**  
+_As a user, I want to sort the tables by their columns so that I find the most relevant rows first._
+
+**Acceptance Criteria:**
+- **AC37.1 – Sort:** Given a table of users, products, inventory, requests, orders or catalog, when a column header is selected, then the rows are ordered by it, ascending or descending.

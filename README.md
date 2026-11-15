@@ -7,6 +7,7 @@ The codebase is organized around Domain-Driven Design (DDD) bounded contexts and
 
 The application consumes the RESTful API of the [OrganiK Platform](https://github.com/6Bits-Startup/organik-platform) backend (`http://localhost:8080/api/v1` when both run locally). Unit tests keep working with in-memory data. The marketing site lives in a separate repository, [`organik-frontend-v2`](https://github.com/5Bits-OrganiK/organik-frontend-v2).
 
+- **Current version:** 2.0.0 (see [CHANGELOG.md](CHANGELOG.md)); it requires OrganiK Platform 1.0.0.
 - Application: https://organik-app-d6e58.web.app
 - Landing page: https://organik-d6e58.web.app
 
@@ -17,9 +18,12 @@ The application consumes the RESTful API of the [OrganiK Platform](https://githu
 - Supplier catalog: suppliers publish their products with lot and availability, minimarkets consult it
 - Supply requests shared by the minimarket (read-only for suppliers) and supplier orders that the administrator of the minimarket accepts or rejects with a reason
 - Supplier directory, supplier profile, registration form and suggested suppliers for the active alerts
-- Conservation monitoring of temperature and humidity per storage zone, with prioritized alerts
+- Conservation monitoring of temperature and humidity per storage zone, with forms to create zones and record manual readings, and prioritized alerts
+- Notifications of the minimarket (low stock, readings out of range, accepted orders) that can be marked as read
+- Offers that put a lot on sale at a price during a period
 - Analytics, alert trend and a dependency-free PDF report generator
-- Users, roles and access profiles with role-based navigation
+- Users, roles and access profiles with role-based navigation, limited to the people of the minimarket of the signed-in user
+- Sortable and paginated list tables (`MatTableDataSource`, `MatSort`, `MatPaginator`)
 - Sign in, sign up (minimarket or supplier) and per-tab sessions with route guards
 - Signal-based state management and reactive UI updates (`signal`, `computed`)
 - Material Design 3 styling with the OrganiK green palette (Geist and Fraunces typefaces)
@@ -40,7 +44,7 @@ The enabled routes (all protected by `authGuard` except `login` and `register`) 
 - `shipments`, `shipments/new`, `shipments/:id`
 - `catalog`, `catalog/new`, `catalog/:id/edit`
 - `suppliers`, `suppliers/new`, `suppliers/suggested`, `suppliers/:id`
-- `conservation`, `conservation/alerts`
+- `conservation`, `conservation/alerts`, `conservation/zones/new`, `conservation/readings/new`
 - `analytics`, `analytics/report`, `alerts`
 - `users`, `users/new`, `users/:id/edit`
 - `profiles`, `settings`
@@ -80,7 +84,6 @@ organik-website-v2/
 ├── docs/                               # Architectural and requirement documentation
 │   ├── adrs.md                         # Architectural Decision Records (ADRs)
 │   ├── class-diagram.puml              # PlantUML domain and component class diagram
-│   ├── openapi-fake-api.yaml           # OpenAPI specification of the fake REST API
 │   └── user-stories.md                 # Functional user stories & Requirements Traceability Matrix (RTM)
 ├── public/                             # Static public assets
 │   ├── favicon.ico                     # Application favicon
@@ -95,17 +98,19 @@ organik-website-v2/
 │   ├── styles.css                      # Global CSS: design tokens, motion and shared classes
 │   ├── environments/                   # Build and runtime environment settings
 │   │   ├── environment.ts              # Production environment configuration
-│   │   └── environment.development.ts  # Local development environment configuration
+│   │   ├── environment.development.ts  # Local development environment configuration
+│   │   └── environment.unit.ts         # Unit test environment (in-memory gateways)
 │   └── app/                            # Application root and bounded contexts
 │       ├── app.config.ts               # Application-level providers (router, i18n, http, IAM interceptor)
 │       ├── app.routes.ts               # Root routing definitions and guards
 │       ├── app.ts                      # Root component class
 │       ├── iam/                        # Identity and Access Management
 │       │   ├── domain/                 # User, Role, Registration and authentication errors
-│       │   ├── infrastructure/         # IamApi, assembler and resources
+│       │   ├── infrastructure/         # IamApi, sign-in/sign-up/users endpoints, interceptor, guard, token storage
 │       │   ├── application/            # AuthStore, SessionStore, UsersStore
 │       │   └── presentation/           # Login, register and user views
 │       ├── profiles/                   # Profiles and business settings
+│       │   ├── infrastructure/         # ProfilesApi and profiles endpoint
 │       │   ├── application/            # SettingsStore
 │       │   └── presentation/           # Profile list and settings views
 │       ├── dashboard/                  # Dashboard
@@ -145,13 +150,15 @@ organik-website-v2/
 │       │   ├── domain/                 # StorageZone, ConservationRange, ConservationAlert
 │       │   ├── infrastructure/         # ConservationApi, assemblers, resources
 │       │   ├── application/            # ConservationStore
-│       │   └── presentation/           # Monitoring and alerts views
+│       │   └── presentation/           # Monitoring, alerts, zone form and reading form
 │       ├── communication/              # Communication
+│       │   ├── domain/                 # Notification
+│       │   ├── infrastructure/         # NotificationsApi, endpoint and assembler
 │       │   ├── application/            # AlertsStore, Notifier
 │       │   └── presentation/           # Alerts overview and alert item
 │       └── shared/                     # Shared Kernel
-│           ├── domain/                 # Value objects, DomainError
-│           ├── infrastructure/         # FakeApi, in-memory gateway, page title strategy
+│           ├── domain/                 # Value objects, BaseEntity, DomainError
+│           ├── infrastructure/         # BaseApi, BaseApiEndpoint, BaseAssembler, BaseResponse, platform switch, in-memory gateway
 │           ├── application/            # LanguageStore, PageTitleStore
 │           └── presentation/           # Shell layout, sidebar, header, search, shared components
 ├── .editorconfig                       # Editor formatting rules
@@ -182,7 +189,7 @@ organik-website-v2/
 - **Diagrams**: PlantUML
 
 ## Documentation
-- **User Stories & Requirements Traceability**: [`docs/user-stories.md`](docs/user-stories.md) - Functional requirement specifications and RTM mapping.
+- **User Stories & Requirements Traceability**: [`docs/user-stories.md`](docs/user-stories.md) - Functional requirement specifications, RTM mapping and the endpoints each story uses.
 - **Class Diagram**: [`docs/class-diagram.puml`](docs/class-diagram.puml) - PlantUML architectural model of bounded contexts, entities, and services.
 - **Architectural Decision Records (ADRs)**: [`docs/adrs.md`](docs/adrs.md) - Key architectural and technology choices.
 - **API Reference**: Scalar API Reference of the backend at `http://localhost:8080/scalar`.
@@ -268,6 +275,9 @@ From the project root, the following scripts are available:
 - `npm test` - Executes unit tests with Vitest (`ng test`).
 
 ## Deployment
+
+Before deploying, point `platformProviderApiBaseUrl` in `src/environments/environment.ts` to the public address of the OrganiK Platform; by default it targets `http://localhost:8080/api/v1`.
+
 The production bundle is deployed to Firebase Hosting (site `organik-app-d6e58` of the project `organik-d6e58`):
 
 ```bash

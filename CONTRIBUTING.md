@@ -29,27 +29,32 @@ The project organizes code into **Bounded Contexts** located under `src/app/`, o
 - **`inventory`**: Stock lots and their expiration policy.
 - **`products`**: Product catalog and categories.
 - **`requisition`**: Supply requests shared with suppliers.
-- **`procurements`**: Shipment orders and their reception.
+- **`procurements`**: Shipment orders and their acceptance or rejection.
 - **`suppliers`**: Supplier directory and recommendations.
 - **`conservation`**: Storage zones, sensor readings and conservation alerts.
-- **`communication`**: Alerts and notifications.
-- **`shared`**: Shared Kernel (value objects, clock port, fake API client, shell layout, reusable UI).
+- **`communication`**: Alerts and the notifications of the minimarket.
+- **`shared`**: Shared Kernel (value objects, `BaseEntity`, base API types, platform switch, shell layout, reusable UI).
 
 Do not merge contexts into one folder. Each bounded context is divided into the architectural layers it needs:
 ```text
 src/app/<bounded-context>/
 ├── domain/
 │   ├── model/           # Entities, value objects, domain interfaces and domain errors.
-│   │                    # Must NOT depend on Angular, HTTP, or UI layers.
-│   └── services/        # Domain services (stateless business rules).
-├── infrastructure/      # Gateways, resource contracts (*-response.ts), assemblers and seeds.
-│                        # Handles HTTP communication and serialization/deserialization.
+│                        # Must NOT depend on Angular, HTTP, or UI layers.
+├── infrastructure/      # Gateways (*-api.ts extending BaseApi), endpoint classes (*-api-endpoint.ts),
+│                        # resource contracts (*-response.ts, *.request.ts), assemblers and seeds.
 ├── application/         # Signal-based stores and use-case orchestrators.
 └── presentation/        # Standalone components, views, forms, guards and route configurations.
     ├── components/      # UI components scoped to the context.
     └── views/           # Routed view pages and forms.
 ```
-`profiles`, `dashboard` and `communication` currently have no domain model or backend gateway, so they only contain `application` and `presentation`. Add a layer only when it has real content.
+`dashboard` has no domain model or backend gateway, so it only contains `application` and `presentation`; `profiles` has no domain model. Add a layer only when it has real content (ADR 012 removed the `domain/services` folders).
+
+### OrganiK Platform integration
+- Each resource of the backend has an endpoint class that extends `ErrorHandlingEnabledBaseType`, reads its path from `environment.platformProvider<Resource>EndpointPath` and is created inside the gateway with `new XApiEndpoint(this.http)`.
+- Gateways extend `BaseApi`, map platform resources into the resources of the web application and return domain entities through assemblers.
+- `iamInterceptor` sends the JWT in every request; gateways read the minimarket or supplier of the signed-in user from `token-storage.ts`.
+- `PLATFORM_API_ENABLED` is `true` in `app.config.ts`; unit tests leave it off so that every gateway answers from its in-memory seed.
 
 Contexts depend on each other only through the public API of their `application` layer (for example `InventoryStore` reads `ProductsStore`) or through the Shared Kernel. A `domain` folder never imports another context.
 
@@ -77,7 +82,7 @@ feature/    ●─────●                   ●────●          
 ```
 
 ### Branch Types & Naming Conventions
-- `main`: Production-ready code. Only merged from `release/*` or `hotfix/*` branches. Tagged with SemVer tags (e.g., `v1.3.0`).
+- `main`: Production-ready code. Merged from `develop` (pull request), `release/*` or `hotfix/*` branches. Tagged with SemVer tags (e.g., `v2.0.0`).
 - `develop`: Primary integration branch where completed features are merged.
 - `feature/<context>-<short-description>`: New features or enhancements (branched from `develop`, merged back to `develop` with `--no-ff`).
   - *Example:* `feature/inventory-stock-form`, `feature/iam-registration`
@@ -86,6 +91,8 @@ feature/    ●─────●                   ●────●          
 - `refactor/<description>` and `docs/<description>`: Structural changes and documentation (branched from `develop`).
 - `release/<MAJOR.MINOR.PATCH>`: Release preparation, final validation, version bump and changelog (branched from `develop`, merged to `main` and `develop`).
 - `hotfix/<MAJOR.MINOR.PATCH>`: Critical production fixes (branched directly from `main`, merged to `main` and `develop`).
+
+Only `main` and `develop` are long-lived: delete every other branch once it is merged.
 
 ---
 
@@ -136,7 +143,13 @@ Versions follow the [SemVer 2.0.0](https://semver.org/) schema: `MAJOR.MINOR.PAT
 - **MINOR (`0.X.0`)**: Backwards-compatible new features, new bounded contexts, or added capabilities.
 - **PATCH (`0.0.X`)**: Backwards-compatible bug fixes, documentation and security patches.
 
-Every release updates `package.json`, closes the `Unreleased` section of `CHANGELOG.md` with the date, and is tagged `v<MAJOR.MINOR.PATCH>` on `main`.
+Every release updates `package.json`, closes the `Unreleased` section of `CHANGELOG.md` with the date, and is tagged `v<MAJOR.MINOR.PATCH>` on `main`. Version 2.0.0 is a MAJOR release because the application moved from the fake API to the OrganiK Platform backend.
+
+### Release process
+1. In `develop`, move the `## [Unreleased]` entries of `CHANGELOG.md` to `## [X.Y.Z] - YYYY-MM-DD` and set `"version": "X.Y.Z"` in `package.json` (`chore(release): prepare X.Y.Z`).
+2. Merge `develop` into `main` with a pull request.
+3. On GitHub, draft a release with the tag `vX.Y.Z` on `main`, use the changelog section as its notes and publish it.
+4. Merge `main` back into `develop` if the release added commits to `main`.
 
 ---
 
@@ -144,7 +157,7 @@ Every release updates `package.json`, closes the `Unreleased` section of `CHANGE
 
 - **Type Safety**: Keep strict type checking. Avoid `any`: use explicit interfaces, generics, or `unknown` (with type narrowing) instead.
 - **Compiler Options**: Respect `noImplicitOverride`, `noImplicitReturns` and `noPropertyAccessFromIndexSignature` from `tsconfig.json`.
-- **Immutability in Domain Models**: Declare entity and value object fields as `readonly` and return new instances for changes (for example `User.with(changes)`).
+- **Immutability in Domain Models**: Declare entity and value object fields as `readonly` (or private fields with accessors, as `User` does to implement `BaseEntity`) and return new instances for changes.
 - **Naming Conventions**:
   - `PascalCase`: Classes, interfaces, types, enums, components (`StockLot`, `ProductsStore`, `InventoryList`).
   - `camelCase`: Properties, methods, functions, variables, signals (`requestItems`, `loadProducts`, `currentUser`).
@@ -187,6 +200,7 @@ Every release updates `package.json`, closes the `Unreleased` section of `CHANGE
 ### Prerequisites
 - Node.js (Active LTS or modern version)
 - npm
+- The OrganiK Platform backend running locally to use the application (see the README)
 
 ### Development Commands
 ```bash
@@ -207,9 +221,9 @@ firebase deploy --only hosting
 ```
 
 ### Tests
-- Cover domain entities, value objects, domain services and stores with unit tests next to their source (`*.spec.ts`).
+- Cover domain entities, value objects and stores with unit tests next to their source (`*.spec.ts`).
 - Freeze time with `vi.setSystemTime` and use fake timers for the simulated gateway latency.
-- Gateways that call the fake API are tested with `HttpTestingController`; keep the `FAKE_API_ENABLED` switch off in unit tests.
+- Unit tests build with `environment.unit.ts` and keep `PLATFORM_API_ENABLED` off, so they never call the backend.
 
 ---
 

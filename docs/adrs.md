@@ -90,7 +90,7 @@ Place reusable value objects (`CalendarDate`, `DateTime`, `EmailAddress`, `Money
 ## ADR 005: Fake REST API on Beeceptor with a Local Fallback
 
 ### Status
-Accepted
+Superseded by ADR 013.
 
 ### Context
 The RESTful web services (Spring Boot) are developed in later sprints, while the frontend already has to be deployed and exercised against an API. The team uses the free plan of Beeceptor, which keeps about twelve objects in total (oldest first) and answers a limited number of requests per day.
@@ -171,7 +171,7 @@ Use `@ngx-translate/core` and `@ngx-translate/http-loader` with `public/i18n/en.
 ## ADR 009: Authentication, Role-Based Access and Per-Tab Sessions
 
 ### Status
-Accepted
+Accepted; the demonstration credentials are superseded by ADR 013 and the role permissions are revised by ADR 014.
 
 ### Context
 Every module of the administrative frontend must be protected, and each role (administrator, operator, supplier) may only open the modules it is granted.
@@ -191,7 +191,7 @@ Every module of the administrative frontend must be protected, and each role (ad
 ## ADR 010: Vitest for Unit Testing
 
 ### Status
-Accepted
+Accepted; the `FakeApi` tests are superseded by ADR 013.
 
 ### Context
 The domain model, the stores and the gateways need fast, deterministic unit tests that run without a browser.
@@ -249,3 +249,66 @@ The reference repositories of the course keep the domain layer limited to `domai
 ### Consequences
 - **Positive**: The domain layer has no Angular imports and the structure matches the course repositories.
 - **Negative**: The alert and suggestion rules are tested through their stores instead of in isolation, and time can only be controlled with the test runner timers.
+
+---
+
+## ADR 013: OrganiK Platform Backend through Endpoint Classes and Gateways
+
+### Status
+Accepted. Supersedes ADR 005.
+
+### Context
+The OrganiK Platform (Spring Boot, JWT) replaces the fake REST API. The course reference projects reach a backend through `BaseApi`, endpoint classes, `BaseResponse`/`BaseResource` contracts and an HTTP interceptor that adds the token.
+
+### Decision
+- Each resource of the backend has an endpoint class (`*-api-endpoint.ts`) that extends `ErrorHandlingEnabledBaseType`; its address is `platformProviderApiBaseUrl` plus `platformProvider<Resource>EndpointPath` of the environment.
+- Each bounded context keeps one gateway (`*-api.ts`) that extends `BaseApi`, composes its endpoints with `new XApiEndpoint(this.http)` and maps the platform resources into the resources and assemblers it already had, so stores and views keep working with domain entities.
+- `POST /tokens` returns the JWT; it is stored in `localStorage` with the user, minimarket and supplier of the profile, and `iamInterceptor` adds `Authorization: Bearer <token>` to every request.
+- `PLATFORM_API_ENABLED` is `true` in `app.config.ts`; unit tests build with `environment.unit.ts`, leave the token off and use the in-memory seeds.
+- `BaseEntity`, `BaseApiEndpoint`, `BaseAssembler` and `BaseResponse` of the course live in the Shared Kernel; `User` implements `BaseEntity` with numeric identifiers, as the platform does.
+- The fake API client and `docs/openapi-fake-api.yaml` are removed; the API reference is the Scalar API Reference of the backend.
+
+### Consequences
+- **Positive**: Data is durable and shared by every user of a minimarket, and the passwords never reach the browser.
+- **Negative**: The application needs the backend to run, and the gateways translate between the resources of the platform and those of the web application.
+
+---
+
+## ADR 014: Permissions per Role and Data of the Own Business
+
+### Status
+Accepted. Revises the role permissions of ADR 009.
+
+### Context
+The operator could open almost every module and the supplier could see the directory of other suppliers, while the report asks that each segment only sees and changes the data of its own business.
+
+### Decision
+- The operator manages inventory, waste and conservation and only follows products, requests and shipment orders; it no longer sees analytics, suppliers or catalogs, nor the orders that wait for a decision.
+- The supplier follows the dashboard and the requests, manages its orders and catalog and does not see other suppliers.
+- The users list reads the profiles of the minimarket of the signed-in user (`GET /profiles?minimarketId=`).
+- The expiration thresholds belong to the minimarket: the administrator saves them in its profile and the platform applies them to every profile of the minimarket.
+- Signing out reloads the application so the next user starts with empty stores.
+
+### Consequences
+- **Positive**: Each role sees what it needs, and every user of a minimarket classifies the lots with the same policy.
+- **Negative**: The permissions are applied by the frontend; the backend only checks that the request is authenticated, as in the course reference projects.
+
+---
+
+## ADR 015: Conservation Forms, Notifications and Offers by Lot
+
+### Status
+Accepted
+
+### Context
+Storage zones, readings, notifications and offers existed in the platform but the web application could not create or use them.
+
+### Decision
+- Conservation offers a zone form (name and storage condition; the range comes from `ConservationRange.forCondition`) and a reading form for manual readings, following the list and form views of the course.
+- The alerts view lists the notifications of the minimarket raised by the platform and marks them as read with `POST /notifications/{id}/readings`.
+- An offer puts a lot on sale at a price from a start day to an end day, as the platform keeps it (`POST /offers`), instead of a number of units of a product.
+- The location, notes and expiration date of a lot, the changes of a published catalog entry and the name of an edited user are saved with the `PUT` endpoints of the platform.
+
+### Consequences
+- **Positive**: The data typed in the application survives a reload and is shared with the other users of the minimarket.
+- **Negative**: The role, assigned module and status of a user are still kept only in the browser session, because the platform does not change them.
