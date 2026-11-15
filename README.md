@@ -276,7 +276,7 @@ From the project root, the following scripts are available:
 
 ## Deployment
 
-Before deploying, point `platformProviderApiBaseUrl` in `src/environments/environment.ts` to the public address of the OrganiK Platform; by default it targets `http://localhost:8080/api/v1`.
+The production build (`src/environments/environment.ts`) targets the OrganiK Platform deployed on Render at `https://organik-platform.onrender.com/api/v1`; the development build keeps `http://localhost:8080/api/v1`. The free Render instance sleeps after 15 minutes without traffic, so the first request after a pause can take up to a minute.
 
 The production bundle is deployed to Firebase Hosting (site `organik-app-d6e58` of the project `organik-d6e58`):
 
