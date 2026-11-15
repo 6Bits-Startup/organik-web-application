@@ -1,8 +1,11 @@
 import {computed, inject, Injectable, signal} from '@angular/core';
+import {Observable, tap} from 'rxjs';
 import {ProductsStore} from '../../products/application/products.store';
 import {InventoryStore} from '../../inventory/application/inventory.store';
 import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {DateTime} from '../../shared/domain/model/date-time';
+import {DomainError} from '../../shared/domain/model/domain-error';
+import {StorageCondition} from '../../shared/domain/model/storage-condition';
 import {ConservationAlert} from '../domain/model/conservation-alert';
 import {ReadingSource} from '../domain/model/reading-source';
 import {ReadingStatus} from '../domain/model/reading-status';
@@ -21,6 +24,21 @@ export interface ReadingItem {
   recordedAt: DateTime;
   status: ReadingStatus;
   source: ReadingSource;
+}
+
+/** Data collected by the form that creates a storage zone. */
+export interface CreateZoneCommand {
+  name: string;
+  condition: StorageCondition;
+}
+
+/** Data collected by the form that records a reading. */
+export interface RecordReadingCommand {
+  zoneId: string;
+  temperature: number;
+  humidity: number;
+  /** Local moment of the measurement, e.g. `2026-11-15T09:30`. */
+  recordedAt: string;
 }
 
 /** Filters of the reading history; a `null` limit leaves that side open. */
@@ -125,6 +143,35 @@ export class ConservationStore {
       const reading = taken.get(item.recordedAt.toString() + item.zoneId);
       return (!filter.zoneId || item.zoneId === filter.zoneId) && (reading?.isTakenBetween(from, to) ?? false);
     });
+  }
+
+  /**
+   * Creates a storage zone with the range its storage condition requires.
+   *
+   * @param command - Data collected by the form.
+   * @throws DomainError if the name is blank or another zone already has it.
+   */
+  createZone(command: CreateZoneCommand): Observable<StorageZone> {
+    const name = command.name.trim();
+    if (this.zonesSignal().some(zone => zone.name.toLowerCase() === name.toLowerCase())) {
+      throw new DomainError(`Storage zone ${name} already exists`);
+    }
+    const zone = new StorageZone(`zone-${this.zonesSignal().length + 1}`, name, command.condition);
+    return this.api.createZone(zone).pipe(tap(created => this.zonesSignal.update(current => [...current, created])));
+  }
+
+  /**
+   * Records a reading typed by the staff in a storage zone.
+   *
+   * @param command - Data collected by the form.
+   * @throws DomainError if the zone does not exist or the humidity is outside 0–100 %.
+   */
+  recordReading(command: RecordReadingCommand): Observable<StorageReading> {
+    if (!this.zonesSignal().some(zone => zone.id === command.zoneId)) {
+      throw new DomainError(`Storage zone ${command.zoneId} does not exist`);
+    }
+    const reading = new StorageReading(command.zoneId, '', command.temperature, command.humidity, new DateTime(command.recordedAt), 'manual');
+    return this.api.recordReading(reading).pipe(tap(recorded => this.readingsSignal.update(current => [...current, recorded])));
   }
 
   /**

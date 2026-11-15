@@ -96,13 +96,14 @@ describe('InventoryStore', () => {
     expect(store.items().find(item => item.lotCode === 'LT-188')?.quantity).toBe(90);
   });
 
-  it('should register an offer without discounting the stock and refuse more units than the stock', async () => {
-    store.registerOffer({productId: 'ORG-01', quantity: 50, validUntil: '2026-10-08'}).subscribe();
+  it('should register an offer of a lot without discounting the stock and refuse an unknown lot', async () => {
+    store.registerOffer({lotCode: 'LT-204', price: 4.5, startsOn: '2026-10-02', endsOn: '2026-10-08'}).subscribe();
     await settleGateway();
 
-    expect(store.offers()[0]).toMatchObject({productName: 'Yogurt orgánico', quantity: 50, active: true});
+    expect(store.offers()[0]).toMatchObject({productName: 'Yogurt orgánico', lotCode: 'LT-204', active: true});
+    expect(store.offers()[0].price.amount).toBe(4.5);
     expect(store.stockOf('ORG-01')).toBe(248);
-    expect(() => store.registerOffer({productId: 'ORG-01', quantity: 249, validUntil: '2026-10-08'})).toThrow(DomainError);
+    expect(() => store.registerOffer({lotCode: 'LT-999', price: 4.5, startsOn: '2026-10-02', endsOn: '2026-10-08'})).toThrow(DomainError);
   });
 
   it('should add the lines of an accepted order as lots exactly once per call', async () => {

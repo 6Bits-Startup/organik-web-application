@@ -243,13 +243,15 @@
     },
     "offer-form": {
       "title": "Register offer",
-      "quantity": "Units on offer",
-      "valid-until": "Valid until",
-      "available": "{{units}} units available",
-      "exceeds": "The units exceed the available stock",
-      "past": "The offer cannot end in the past",
+      "past": "The offer cannot start in the past",
       "submit": "Register offer",
-      "saved": "Offer registered"
+      "saved": "Offer registered",
+      "lot": "Lot on offer",
+      "price": "Offer price (S/)",
+      "starts-on": "From",
+      "ends-on": "Until",
+      "invalid-price": "Enter a price greater than zero",
+      "before-start": "The offer cannot end before it starts"
     },
     "offer-status": {
       "active": "Active",
@@ -274,7 +276,9 @@
       "actor": "Made by",
       "valid-until": "Valid until",
       "empty": "There are no movements yet.",
-      "offers-empty": "There are no offers yet."
+      "offers-empty": "There are no offers yet.",
+      "price": "Price",
+      "period": "Period"
     }
   },
   "requests": {
@@ -318,6 +322,19 @@
       "expiration": "Upcoming expiration",
       "temperature": "Temperature out of range",
       "minimum-stock": "Minimum stock reached"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "unread": "{{count}} unread",
+      "mark-as-read": "Mark as read",
+      "empty": "There are no notifications.",
+      "types": {
+        "expiration": "Expiration",
+        "conservation": "Conservation",
+        "low-stock": "Low stock",
+        "replenishment": "Replenishment",
+        "order": "Order"
+      }
     }
   },
   "conservation": {
@@ -347,7 +364,8 @@
     "no-readings": "No readings yet for: {{zones}}.",
     "sources": {
       "simulated": "Simulated",
-      "sensor": "Sensor"
+      "sensor": "Sensor",
+      "manual": "Manual"
     },
     "history": {
       "title": "Reading history",
@@ -358,6 +376,24 @@
       "humidity": "Humidity",
       "source": "Source",
       "empty": "There are no readings in this range."
+    },
+    "new-zone": "New zone",
+    "new-reading": "Record reading",
+    "zone-form": {
+      "title": "New storage zone",
+      "name": "Zone name",
+      "condition": "Storage condition",
+      "range": "Range to keep: {{minTemperature}} to {{maxTemperature}} °C and {{minHumidity}} to {{maxHumidity}} % humidity.",
+      "name-in-use": "A zone with that name already exists",
+      "submit": "Create zone",
+      "saved": "Zone {{name}} created"
+    },
+    "reading-form": {
+      "title": "Record reading",
+      "invalid-temperature": "Enter a temperature between -50 and 60 °C",
+      "invalid-humidity": "Enter a humidity between 0 and 100 %",
+      "submit": "Record reading",
+      "saved": "Reading recorded"
     }
   },
   "analytics": {

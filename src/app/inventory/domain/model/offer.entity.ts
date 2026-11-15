@@ -1,58 +1,58 @@
 import {CalendarDate} from '../../../shared/domain/model/calendar-date';
 import {DomainError} from '../../../shared/domain/model/domain-error';
-import {Quantity} from '../../../shared/domain/model/quantity';
+import {Money} from '../../../shared/domain/model/money';
 
-/**
- * Data required to build an {@link Offer}.
- */
+/** Data needed to create an offer. */
 export interface OfferProps {
   id: string;
+  /** Lot whose units are sold at the offer price. */
+  lotCode: string;
+  /** SKU of the product of the lot. */
   productId: string;
-  quantity: Quantity;
-  validUntil: CalendarDate;
-  createdBy: string;
-  createdOn: CalendarDate;
+  price: Money;
+  startsOn: CalendarDate;
+  endsOn: CalendarDate;
 }
 
 /**
- * Represents units of a product put on offer for a period. An offer never discounts the stock by
- * itself: it only keeps track of what was promoted and until when.
+ * Represents a special price for the units of a stock lot during a period, usually to sell
+ * them before they expire. An offer does not discount the stock.
  */
 export class Offer {
   readonly id: string;
+  readonly lotCode: string;
   readonly productId: string;
-  readonly quantity: Quantity;
-  readonly validUntil: CalendarDate;
-  readonly createdBy: string;
-  readonly createdOn: CalendarDate;
+  readonly price: Money;
+  readonly startsOn: CalendarDate;
+  readonly endsOn: CalendarDate;
 
   /**
-   * @throws DomainError if the offer has no units or it expires before it is created.
+   * @param props - Data of the offer.
+   * @throws DomainError if the identifier or the lot is blank, the price is zero or the period ends before it starts.
    */
   constructor(props: OfferProps) {
-    if (!props.id.trim() || !props.productId.trim()) {
-      throw new DomainError('An offer needs an identifier and a product');
+    if (!props.id.trim() || !props.lotCode.trim()) {
+      throw new DomainError('An offer needs an identifier and a lot');
     }
-    if (props.quantity.value < 1) {
-      throw new DomainError('An offer needs at least one unit');
+    if (props.price.amount <= 0) {
+      throw new DomainError('An offer needs a price greater than zero');
     }
-    if (props.validUntil.isBefore(props.createdOn)) {
-      throw new DomainError('An offer cannot expire before it is created');
+    if (props.endsOn.isBefore(props.startsOn)) {
+      throw new DomainError('An offer cannot end before it starts');
     }
     this.id = props.id;
+    this.lotCode = props.lotCode;
     this.productId = props.productId;
-    this.quantity = props.quantity;
-    this.validUntil = props.validUntil;
-    this.createdBy = props.createdBy;
-    this.createdOn = props.createdOn;
+    this.price = props.price;
+    this.startsOn = props.startsOn;
+    this.endsOn = props.endsOn;
   }
 
   /**
-   * Whether the offer is still valid.
-   *
-   * @param today - Reference day.
+   * @param today - Day to check.
+   * @returns Whether the day is inside the period of the offer.
    */
   isActiveOn(today: CalendarDate): boolean {
-    return !this.validUntil.isBefore(today);
+    return !today.isBefore(this.startsOn) && !this.endsOn.isBefore(today);
   }
 }

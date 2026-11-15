@@ -106,16 +106,24 @@ export class UserForm implements OnInit {
     const id = this.id();
     try {
       const saved$ = id ? this.store.updateUser(id, command) : this.store.createUser(command);
-      saved$.subscribe(user => {
-        this.notifier.success(id ? 'iam.users.form.updated' : 'iam.users.form.created', {name: user.fullName});
-        this.router.navigate(['/users']).then();
+      saved$.subscribe({
+        next: user => {
+          this.notifier.success(id ? 'iam.users.form.updated' : 'iam.users.form.created', {name: user.fullName});
+          this.router.navigate(['/users']).then();
+        },
+        // The platform refuses an e-mail that another business already uses.
+        error: () => this.markEmailInUse()
       });
     } catch (error) {
       if (!(error instanceof DomainError)) {
         throw error;
       }
-      this.form.controls.email.setErrors({inUse: true});
-      this.form.controls.email.markAsTouched();
+      this.markEmailInUse();
     }
+  }
+
+  private markEmailInUse(): void {
+    this.form.controls.email.setErrors({inUse: true});
+    this.form.controls.email.markAsTouched();
   }
 }

@@ -1,34 +1,51 @@
+import {HttpClient} from '@angular/common/http';
 import {inject, Injectable} from '@angular/core';
-import {map, Observable} from 'rxjs';
+import {forkJoin, map, Observable, of, switchMap} from 'rxjs';
 import {Clock} from '../../shared/domain/services/clock';
+import {BaseApi} from '../../shared/infrastructure/base-api';
 import {respondWith} from '../../shared/infrastructure/in-memory-gateway';
+import {PLATFORM_API_ENABLED} from '../../shared/infrastructure/platform-api';
 import {OfferedProduct} from '../domain/model/offered-product.entity';
 import {Supplier} from '../domain/model/supplier.entity';
 import {OfferedProductAssembler} from './offered-product-assembler';
+import {OfferedProductsApiEndpoint} from './offered-products-api-endpoint';
 import {SupplierAssembler} from './supplier-assembler';
+import {SupplierCategoryAssembler} from './supplier-category-assembler';
+import {PlatformOfferedProductResource, PlatformSupplierResource} from './supplier-platform-response';
 import {OfferedProductResource, SupplierResource, SuppliersResponse} from './suppliers-response';
+import {SuppliersApiEndpoint} from './suppliers-api-endpoint';
 import {offeredProductsSeed, SUPPLIERS_SEED} from './suppliers-seed';
 
 @Injectable({providedIn: 'root'})
 /**
- * Infrastructure gateway to the suppliers backend.
+ * Infrastructure gateway to the suppliers bounded context of the OrganiK Platform.
  *
  * @remarks
- * Until the backend exists, resources are kept in memory. The gateway still returns
- * domain entities by delegating resource mapping to the assembler.
+ * The platform identifies suppliers by number; the web application uses that number as text.
+ * When {@link PLATFORM_API_ENABLED} is off (unit tests), resources are kept in memory.
  */
-export class SuppliersApi {
+export class SuppliersApi extends BaseApi {
+  private readonly http = inject(HttpClient);
+  private readonly platformEnabled = inject(PLATFORM_API_ENABLED);
   private readonly assembler = inject(SupplierAssembler);
   private readonly offeredAssembler = inject(OfferedProductAssembler);
-  private readonly resources: SupplierResource[] = structuredClone(SUPPLIERS_SEED);
-  private readonly offeredResources: OfferedProductResource[] = offeredProductsSeed(inject(Clock).today());
+  private readonly suppliersEndpoint = new SuppliersApiEndpoint(this.http);
+  private readonly offeredProductsEndpoint = new OfferedProductsApiEndpoint(this.http);
+  private readonly today = inject(Clock).today();
+  private readonly resources: SupplierResource[] = this.platformEnabled ? [] : structuredClone(SUPPLIERS_SEED);
+  private readonly offeredResources: OfferedProductResource[] = this.platformEnabled ? [] : offeredProductsSeed(this.today);
 
   /**
    * Fetches every supplier and maps it into domain entities.
    */
   getSuppliers(): Observable<Supplier[]> {
-    const response: SuppliersResponse = {suppliers: structuredClone(this.resources)};
-    return respondWith(response).pipe(map(r => this.assembler.toEntitiesFromResponse(r)));
+    if (!this.platformEnabled) {
+      const response: SuppliersResponse = {suppliers: structuredClone(this.resources)};
+      return respondWith(response).pipe(map(r => this.assembler.toEntitiesFromResponse(r)));
+    }
+    return this.suppliersEndpoint.getAll().pipe(
+      map(suppliers => this.assembler.toEntitiesFromResponse({suppliers: suppliers.map(supplier => this.toResourceFromPlatform(supplier))}))
+    );
   }
 
   /**
@@ -37,16 +54,39 @@ export class SuppliersApi {
    * @param supplier - Supplier entity to store.
    */
   createSupplier(supplier: Supplier): Observable<Supplier> {
-    this.resources.push(this.assembler.toResourceFromEntity(supplier));
-    return respondWith(supplier);
+    if (!this.platformEnabled) {
+      this.resources.push(this.assembler.toResourceFromEntity(supplier));
+      return respondWith(supplier);
+    }
+    return this.suppliersEndpoint
+      .create({
+        businessName: supplier.businessName,
+        contactName: supplier.contactName,
+        phoneNumber: supplier.phone,
+        email: supplier.email.toString(),
+        categories: SupplierCategoryAssembler.toPlatformCategories(supplier.categories),
+        organicCertification: supplier.organicCertification
+      })
+      .pipe(map(created => this.assembler.toEntityFromResource(this.toResourceFromPlatform(created))));
   }
 
   /**
    * Fetches every product the suppliers offer.
    */
   getOfferedProducts(): Observable<OfferedProduct[]> {
-    return respondWith({offeredProducts: structuredClone(this.offeredResources)}).pipe(
-      map(response => this.offeredAssembler.toEntitiesFromResponse(response))
+    if (!this.platformEnabled) {
+      return respondWith({offeredProducts: structuredClone(this.offeredResources)}).pipe(
+        map(response => this.offeredAssembler.toEntitiesFromResponse(response))
+      );
+    }
+    return this.suppliersEndpoint.getAll().pipe(
+      switchMap(suppliers =>
+        suppliers.length ? forkJoin(suppliers.map(supplier => this.offeredProductsEndpoint.getBySupplierId(String(supplier.id)))) : of([])
+      ),
+      map(offered => {
+        const published = offered.flat().map(product => this.toOfferedResourceFromPlatform(product));
+        return this.offeredAssembler.toEntitiesFromResponse({offeredProducts: published});
+      })
     );
   }
 
@@ -56,8 +96,19 @@ export class SuppliersApi {
    * @param offered - Entity to store.
    */
   createOfferedProduct(offered: OfferedProduct): Observable<OfferedProduct> {
-    this.offeredResources.push(this.offeredAssembler.toResourceFromEntity(offered));
-    return respondWith(offered);
+    if (!this.platformEnabled) {
+      this.offeredResources.push(this.offeredAssembler.toResourceFromEntity(offered));
+      return respondWith(offered);
+    }
+    return this.offeredProductsEndpoint
+      .create({
+        supplierId: offered.supplierId,
+        productId: offered.productId,
+        lotCode: offered.lotCode,
+        availableQuantity: offered.availableQuantity.value,
+        expiresOn: offered.expiresOn.toString()
+      })
+      .pipe(map(created => this.offeredAssembler.toEntityFromResource(this.toOfferedResourceFromPlatform(created))));
   }
 
   /**
@@ -66,8 +117,42 @@ export class SuppliersApi {
    * @param offered - Updated entity.
    */
   updateOfferedProduct(offered: OfferedProduct): Observable<OfferedProduct> {
-    const index = this.offeredResources.findIndex(resource => resource.id === offered.id);
-    this.offeredResources[index] = this.offeredAssembler.toResourceFromEntity(offered);
-    return respondWith(offered);
+    if (!this.platformEnabled) {
+      const index = this.offeredResources.findIndex(candidate => candidate.id === offered.id);
+      this.offeredResources[index] = this.offeredAssembler.toResourceFromEntity(offered);
+      return respondWith(offered);
+    }
+    return this.offeredProductsEndpoint
+      .update(Number(offered.id), {
+        lotCode: offered.lotCode,
+        availableQuantity: offered.availableQuantity.value,
+        expiresOn: offered.expiresOn.toString()
+      })
+      .pipe(map(updated => this.offeredAssembler.toEntityFromResource(this.toOfferedResourceFromPlatform(updated))));
+  }
+
+  private toResourceFromPlatform(supplier: PlatformSupplierResource): SupplierResource {
+    return {
+      id: String(supplier.id),
+      businessName: supplier.businessName,
+      contactName: supplier.contactName,
+      phone: supplier.phoneNumber,
+      email: supplier.email,
+      categories: SupplierCategoryAssembler.toLabels(supplier.categories),
+      organicCertification: supplier.organicCertification,
+      specialties: []
+    };
+  }
+
+  private toOfferedResourceFromPlatform(offered: PlatformOfferedProductResource): OfferedProductResource {
+    return {
+      id: String(offered.id),
+      supplierId: offered.supplierId,
+      productId: offered.productId,
+      lotCode: offered.lotCode,
+      availableQuantity: offered.availableQuantity,
+      expiresOn: offered.expiresOn,
+      updatedOn: this.today.toString()
+    };
   }
 }

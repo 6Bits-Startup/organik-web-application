@@ -42,6 +42,6 @@ export function inventoryEventsSeed(today: CalendarDate): InventoryEventResource
  */
 export function offersSeed(today: CalendarDate): OfferResource[] {
   return [
-    {id: 'off-1', productId: 'ORG-04', quantity: 30, validUntil: today.plusDays(3).toString(), createdBy: 'Albino Caceres', createdOn: today.plusDays(-1).toString()}
+    {id: 'off-1', lotCode: 'LT-090', productId: 'ORG-04', price: 3.5, startsOn: today.plusDays(-1).toString(), endsOn: today.plusDays(3).toString()}
   ];
 }

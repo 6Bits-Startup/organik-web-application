@@ -1,4 +1,5 @@
 import {CalendarDate} from '../../shared/domain/model/calendar-date';
+import {Money} from '../../shared/domain/model/money';
 import {InventoryEventType} from '../domain/model/inventory-event';
 import {StockStatus} from '../domain/model/stock-status';
 
@@ -50,8 +51,9 @@ export interface InventoryEventItem {
 export interface OfferItem {
   id: string;
   productName: string;
-  quantity: number;
-  validUntil: CalendarDate;
-  createdBy: string;
+  lotCode: string;
+  price: Money;
+  startsOn: CalendarDate;
+  endsOn: CalendarDate;
   active: boolean;
 }

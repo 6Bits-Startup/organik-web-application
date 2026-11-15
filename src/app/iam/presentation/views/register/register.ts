@@ -13,6 +13,7 @@ import {environment} from '../../../../../environments/environment';
 import {emailValidator} from '../../../../shared/presentation/forms/validators';
 import {AppFooter} from '../../../../shared/presentation/components/app-footer/app-footer';
 import {LanguageSwitcher} from '../../../../shared/presentation/components/language-switcher/language-switcher';
+import {PLATFORM_API_ENABLED} from '../../../../shared/infrastructure/platform-api';
 import {SuppliersStore} from '../../../../suppliers/application/suppliers.store';
 import {AuthStore} from '../../../application/auth.store';
 import {SignUpRole} from '../../../domain/model/registration';
@@ -59,6 +60,7 @@ export class Register {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly suppliers = inject(SuppliersStore);
+  private readonly platformEnabled = inject(PLATFORM_API_ENABLED);
 
   /** Role chosen on the landing (`?role=supplier` or `?role=administrator`), bound from the query string. */
   role = input<string>();
@@ -76,6 +78,8 @@ export class Register {
     email: ['', [Validators.required, emailValidator]],
     role: ['administrator' as SignUpRole],
     company: ['', [Validators.required, Validators.minLength(2)]],
+    phone: [''],
+    categories: [''],
     password: ['', [Validators.required, Validators.minLength(MIN_PASSWORD_LENGTH)]],
     terms: [false, Validators.requiredTrue]
   });
@@ -94,7 +98,15 @@ export class Register {
       const requested = this.role() === 'supplier' ? 'supplier' : 'administrator';
       this.form.controls.role.setValue(requested);
     });
-    this.form.controls.role.valueChanges.subscribe(role => this.chosenRole.set(role));
+    this.form.controls.role.valueChanges.subscribe(role => {
+      this.chosenRole.set(role);
+      // Suppliers also give the phone and categories the supplier directory needs.
+      const {phone, categories} = this.form.controls;
+      phone.setValidators(role === 'supplier' ? [Validators.required, Validators.pattern(/^\+?[0-9][0-9 -]{5,19}$/)] : []);
+      categories.setValidators(role === 'supplier' ? [Validators.required] : []);
+      phone.updateValueAndValidity();
+      categories.updateValueAndValidity();
+    });
   }
 
   protected readonly showPassword = signal(false);
@@ -113,16 +125,16 @@ export class Register {
       this.form.markAllAsTouched();
       return;
     }
-    const {fullName, email, role, company, password} = this.form.getRawValue();
+    const {fullName, email, role, company, phone, categories, password} = this.form.getRawValue();
     this.failure.set(null);
     this.submitting.set(true);
-    this.auth.register({fullName, email, role, company, password, plan: this.chosenPlan() ?? undefined}).subscribe({
+    this.auth.register({fullName, email, role, company, phone, categories, password, plan: this.chosenPlan() ?? undefined}).subscribe({
       next: user => {
-        if (user.supplierId) {
+        if (user.supplierId && !this.platformEnabled) {
           // A new supplier company enters the directory so the minimarkets can see it.
           this.suppliers
             .registerSupplier(
-              {businessName: company, contactName: fullName, phone: '', email, categories: '', organicCertification: 'Pending verification'},
+              {businessName: company, contactName: fullName, phone, email, categories, organicCertification: 'Pending verification'},
               user.supplierId
             )
             .subscribe();

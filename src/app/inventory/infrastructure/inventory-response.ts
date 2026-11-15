@@ -53,9 +53,11 @@ export interface OffersResponse {
  */
 export interface OfferResource {
   id: string;
+  lotCode: string;
   productId: string;
-  quantity: number;
-  validUntil: string;
-  createdBy: string;
-  createdOn: string;
+  price: number;
+  /** First day of the offer in ISO-8601 format (`yyyy-MM-dd`). */
+  startsOn: string;
+  /** Last day of the offer in ISO-8601 format (`yyyy-MM-dd`). */
+  endsOn: string;
 }

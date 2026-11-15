@@ -106,6 +106,30 @@
         </mat-form-field>
       </div>
 
+      @if (isSupplier()) {
+        <div class="ok-field ok-reveal" style="--i: 5">
+          <label for="phone">{{ 'suppliers.form.phone' | translate }}</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-icon matPrefix aria-hidden="true">call</mat-icon>
+            <input matInput id="phone" type="tel" formControlName="phone" autocomplete="tel"/>
+            @if (form.controls.phone.hasError('required')) {
+              <mat-error>{{ 'form.required' | translate }}</mat-error>
+            } @else {
+              <mat-error>{{ 'form.invalid-phone' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <div class="ok-field ok-reveal" style="--i: 5">
+          <label for="categories">{{ 'suppliers.form.categories' | translate }}</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-icon matPrefix aria-hidden="true">category</mat-icon>
+            <input matInput id="categories" formControlName="categories" [placeholder]="'suppliers.form.categories-hint' | translate"/>
+            <mat-error>{{ 'form.required' | translate }}</mat-error>
+          </mat-form-field>
+        </div>
+      }
+
       <div class="ok-field ok-reveal" style="--i: 6">
         <label for="password">{{ 'auth.password' | translate }}</label>
         <mat-form-field appearance="outline" subscriptSizing="dynamic">

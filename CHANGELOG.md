@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Integration with the OrganiK Platform backend: endpoint classes, `BaseApi` gateways, JWT sign-in and sign-up, `iamInterceptor` and profiles for every bounded context.
+- Sign-up of suppliers with phone and categories, required by the supplier directory of the platform.
+- Expiration thresholds saved in the preferences of the profile.
+- Conservation: create storage zones and record manual readings of the minimarket.
+- Alerts: notifications of the minimarket raised by the platform, which can be marked as read.
+- The location, notes and expiration date of a lot, the edits of a published catalog entry and the name of an edited user are saved in the platform.
+
+### Changed
+
+- Gateways read and write the platform resources of the minimarket or supplier of the signed-in user; unit tests keep using the in-memory seeds.
+- The minimarkets a supplier can send orders to come from the registered profiles.
+- Signing out reloads the application so the next user starts with empty stores.
+- Operators run the inventory, waste and conservation and only follow products, requests and orders; they no longer see analytics, suppliers or catalogs, nor the orders that wait for a decision.
+- Suppliers no longer see the directory of other suppliers.
+- The users list only shows the people of the minimarket of the signed-in user, and the user form reports an e-mail already used in the platform.
+- The expiration thresholds are shared by every user of a minimarket.
+- Offers put a lot on sale at a price during a period, as the platform keeps them.
+
+### Removed
+
+- Fake REST API client (Beeceptor) and its cache.
+
 ## [1.4.0] - 2026-10-07
 
 ### Added
