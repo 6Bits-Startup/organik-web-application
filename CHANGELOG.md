@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Gateways read and write the platform resources of the minimarket or supplier of the signed-in user; unit tests keep using the in-memory seeds.
 - The minimarkets a supplier can send orders to come from the registered profiles.
 - Signing out reloads the application so the next user starts with empty stores.
+- Operators run the inventory, waste and conservation and only follow products, requests and orders; they no longer see analytics, suppliers or catalogs, nor the orders that wait for a decision.
+- Suppliers no longer see the directory of other suppliers.
+- The users list only shows the people of the minimarket of the signed-in user, and the user form reports an e-mail already used in the platform.
+- The expiration thresholds are shared by every user of a minimarket.
 
 ### Removed
 

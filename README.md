@@ -46,7 +46,7 @@ The enabled routes (all protected by `authGuard` except `login` and `register`) 
 - `profiles`, `settings`
 - `prototype` (entry screen with the interaction map)
 
-Each role only sees the modules it is granted: the administrator manages every module, the operator runs the daily operation and the supplier follows the dashboard and the requests, publishes its catalog and creates orders (it can see the suppliers). Only the administrator of the destination minimarket accepts or rejects an order. Create the accounts at `/register` (administrator or supplier); they are stored in the backend.
+Each role only sees the modules it is granted: the administrator manages every module; the operator runs the daily operation (inventory, waste and conservation) and follows the products, requests and incoming orders without deciding on them; the supplier follows the dashboard and the requests, publishes its catalog and creates orders, and does not see other suppliers. Only the administrator of the destination minimarket accepts or rejects an order, and the users list only shows the people of the minimarket of the signed-in user. Create the accounts at `/register` (administrator or supplier); they are stored in the backend.
 
 ## Architecture Overview
 The application structure follows Domain-Driven Design (DDD) bounded contexts, one folder each:
@@ -247,7 +247,7 @@ The address of the backend is `platformProviderApiBaseUrl` in `src/environments/
 - Minimarket staff read the data of their minimarket (`minimarketId`) and suppliers the data of their company (`supplierId`).
 - A waste is sent as a `WASTE` inventory movement and a new quantity as an `ADJUSTMENT`; the history of the inventory is built from those movements.
 - Accepting an order (`/shipment-orders/{id}/acceptances`) registers its lots in the backend, so the frontend reads the lots again.
-- The expiration thresholds of the settings are the preferences of the profile (`PUT /profiles/{id}/preferences`).
+- The expiration thresholds of the settings belong to the minimarket: the administrator saves them in its profile (`PUT /profiles/{id}/preferences`) and the platform applies them to every profile of the minimarket, including the users invited later.
 - `PLATFORM_API_ENABLED` turns the integration on in `app.config.ts`; unit tests leave it off and use the in-memory seeds.
 
 Known limitations of the current backend:
