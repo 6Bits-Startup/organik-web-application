@@ -8,7 +8,7 @@ export const environment = {
   /** Language used when the user has not chosen one yet. */
   defaultLanguage: 'en',
   /** Base URL of the OrganiK Platform RESTful API. */
-  platformProviderApiBaseUrl: 'http://localhost:8080/api/v1',
+  platformProviderApiBaseUrl: 'https://organik-platform.onrender.com/api/v1',
   platformProviderSignInEndpointPath: '/tokens',
   platformProviderSignUpEndpointPath: '/users',
   platformProviderUsersEndpointPath: '/users',
