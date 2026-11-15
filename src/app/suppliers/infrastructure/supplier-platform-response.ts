@@ -49,3 +49,12 @@ export interface CreateOfferedProductRequest {
   availableQuantity: number;
   expiresOn: string;
 }
+
+/**
+ * Request body of `PUT /offered-products/{offeredProductId}`.
+ */
+export interface UpdateOfferedProductRequest {
+  lotCode: string;
+  availableQuantity: number;
+  expiresOn: string;
+}

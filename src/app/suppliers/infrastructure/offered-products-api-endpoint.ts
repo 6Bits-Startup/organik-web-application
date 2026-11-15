@@ -3,12 +3,12 @@ import {catchError, Observable} from 'rxjs';
 import {environment} from '../../../environments/environment';
 import {ErrorHandlingEnabledBaseType} from '../../shared/infrastructure/error-handling-enabled-base-type';
 import {platformUrl} from '../../shared/infrastructure/platform-api';
-import {CreateOfferedProductRequest, PlatformOfferedProductResource} from './supplier-platform-response';
+import {CreateOfferedProductRequest, PlatformOfferedProductResource, UpdateOfferedProductRequest} from './supplier-platform-response';
 
 const offeredProductsApiEndpointUrl = platformUrl(environment.platformProviderOfferedProductsEndpointPath);
 
 /**
- * Endpoint that reads and publishes the products offered by the suppliers.
+ * Endpoint that reads, publishes and updates the products offered by the suppliers.
  */
 export class OfferedProductsApiEndpoint extends ErrorHandlingEnabledBaseType {
   constructor(private http: HttpClient) {
@@ -22,4 +22,8 @@ export class OfferedProductsApiEndpoint extends ErrorHandlingEnabledBaseType {
   create = (request: CreateOfferedProductRequest): Observable<PlatformOfferedProductResource> =>
     this.http.post<PlatformOfferedProductResource>(offeredProductsApiEndpointUrl, request)
       .pipe(catchError(this.handleError('Failed to publish offered product')));
+
+  update = (offeredProductId: number, request: UpdateOfferedProductRequest): Observable<PlatformOfferedProductResource> =>
+    this.http.put<PlatformOfferedProductResource>(`${offeredProductsApiEndpointUrl}/${offeredProductId}`, request)
+      .pipe(catchError(this.handleError('Failed to update offered product')));
 }

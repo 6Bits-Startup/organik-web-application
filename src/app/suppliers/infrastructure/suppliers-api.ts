@@ -22,8 +22,7 @@ import {offeredProductsSeed, SUPPLIERS_SEED} from './suppliers-seed';
  *
  * @remarks
  * The platform identifies suppliers by number; the web application uses that number as text.
- * The platform does not change an offered product once it is published, so an update stays in
- * this session. When {@link PLATFORM_API_ENABLED} is off (unit tests), resources are kept in memory.
+ * When {@link PLATFORM_API_ENABLED} is off (unit tests), resources are kept in memory.
  */
 export class SuppliersApi extends BaseApi {
   private readonly http = inject(HttpClient);
@@ -86,8 +85,7 @@ export class SuppliersApi extends BaseApi {
       ),
       map(offered => {
         const published = offered.flat().map(product => this.toOfferedResourceFromPlatform(product));
-        const revised = published.map(product => this.offeredResources.find(candidate => candidate.id === product.id) ?? product);
-        return this.offeredAssembler.toEntitiesFromResponse({offeredProducts: revised});
+        return this.offeredAssembler.toEntitiesFromResponse({offeredProducts: published});
       })
     );
   }
@@ -119,14 +117,18 @@ export class SuppliersApi extends BaseApi {
    * @param offered - Updated entity.
    */
   updateOfferedProduct(offered: OfferedProduct): Observable<OfferedProduct> {
-    const resource = this.offeredAssembler.toResourceFromEntity(offered);
-    const index = this.offeredResources.findIndex(candidate => candidate.id === offered.id);
-    if (index < 0) {
-      this.offeredResources.push(resource);
-    } else {
-      this.offeredResources[index] = resource;
+    if (!this.platformEnabled) {
+      const index = this.offeredResources.findIndex(candidate => candidate.id === offered.id);
+      this.offeredResources[index] = this.offeredAssembler.toResourceFromEntity(offered);
+      return respondWith(offered);
     }
-    return respondWith(offered);
+    return this.offeredProductsEndpoint
+      .update(Number(offered.id), {
+        lotCode: offered.lotCode,
+        availableQuantity: offered.availableQuantity.value,
+        expiresOn: offered.expiresOn.toString()
+      })
+      .pipe(map(updated => this.offeredAssembler.toEntityFromResource(this.toOfferedResourceFromPlatform(updated))));
   }
 
   private toResourceFromPlatform(supplier: PlatformSupplierResource): SupplierResource {
