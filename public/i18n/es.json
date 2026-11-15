@@ -347,7 +347,8 @@
     "no-readings": "Aún no hay lecturas para: {{zones}}.",
     "sources": {
       "simulated": "Simulada",
-      "sensor": "Sensor"
+      "sensor": "Sensor",
+      "manual": "Manual"
     },
     "history": {
       "title": "Historial de lecturas",
@@ -358,6 +359,24 @@
       "humidity": "Humedad",
       "source": "Origen",
       "empty": "No hay lecturas en este rango."
+    },
+    "new-zone": "Nueva zona",
+    "new-reading": "Registrar lectura",
+    "zone-form": {
+      "title": "Nueva zona de almacenamiento",
+      "name": "Nombre de la zona",
+      "condition": "Condición de almacenamiento",
+      "range": "Rango que debe mantener: {{minTemperature}} a {{maxTemperature}} °C y {{minHumidity}} a {{maxHumidity}} % de humedad.",
+      "name-in-use": "Ya existe una zona con ese nombre",
+      "submit": "Crear zona",
+      "saved": "Zona {{name}} creada"
+    },
+    "reading-form": {
+      "title": "Registrar lectura",
+      "invalid-temperature": "Ingresa una temperatura entre -50 y 60 °C",
+      "invalid-humidity": "Ingresa una humedad entre 0 y 100 %",
+      "submit": "Registrar lectura",
+      "saved": "Lectura registrada"
     }
   },
   "analytics": {

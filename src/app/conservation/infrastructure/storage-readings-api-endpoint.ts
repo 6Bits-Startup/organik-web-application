@@ -3,12 +3,12 @@ import {catchError, Observable} from 'rxjs';
 import {environment} from '../../../environments/environment';
 import {ErrorHandlingEnabledBaseType} from '../../shared/infrastructure/error-handling-enabled-base-type';
 import {platformUrl} from '../../shared/infrastructure/platform-api';
-import {PlatformStorageReadingResource} from './conservation-platform-response';
+import {PlatformStorageReadingResource, RecordStorageReadingRequest} from './conservation-platform-response';
 
 const storageReadingsApiEndpointUrl = platformUrl(environment.platformProviderStorageReadingsEndpointPath);
 
 /**
- * Endpoint that reads the readings of a storage zone.
+ * Endpoint that reads and records the readings of a storage zone.
  */
 export class StorageReadingsApiEndpoint extends ErrorHandlingEnabledBaseType {
   constructor(private http: HttpClient) {
@@ -18,4 +18,8 @@ export class StorageReadingsApiEndpoint extends ErrorHandlingEnabledBaseType {
   getByStorageZoneId = (storageZoneId: number): Observable<PlatformStorageReadingResource[]> =>
     this.http.get<PlatformStorageReadingResource[]>(storageReadingsApiEndpointUrl, {params: new HttpParams().set('storageZoneId', storageZoneId)})
       .pipe(catchError(this.handleError('Failed to fetch storage readings')));
+
+  create = (request: RecordStorageReadingRequest): Observable<PlatformStorageReadingResource> =>
+    this.http.post<PlatformStorageReadingResource>(storageReadingsApiEndpointUrl, request)
+      .pipe(catchError(this.handleError('Failed to record storage reading')));
 }

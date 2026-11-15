@@ -5,6 +5,7 @@ import {BaseResource, BaseResponse} from '../../shared/infrastructure/base-respo
  */
 export interface PlatformStorageZoneResource extends BaseResource {
   id: number;
+  minimarketId: string;
   name: string;
   storageCondition: string;
   minTemperature: number;
@@ -26,4 +27,29 @@ export interface PlatformStorageReadingResource extends BaseResource {
   recordedAt: string;
   source: string;
   withinRange: boolean;
+}
+
+/**
+ * Request body of `POST /storage-zones`.
+ */
+export interface CreateStorageZoneRequest {
+  minimarketId: string;
+  name: string;
+  storageCondition: string;
+  minTemperature: number;
+  maxTemperature: number;
+  minHumidity: number;
+  maxHumidity: number;
+}
+
+/**
+ * Request body of `POST /storage-readings`.
+ */
+export interface RecordStorageReadingRequest {
+  storageZoneId: number;
+  temperature: number;
+  humidity: number;
+  /** Local moment of the measurement, e.g. `2026-11-15T09:30:00`. */
+  recordedAt: string;
+  source: string;
 }
