@@ -135,7 +135,8 @@ export class IamApi extends BaseApi {
   }
 
   /**
-   * Updates a user. The platform does not change roles or names yet, so the change stays in this session.
+   * Updates a user. On the platform its name is saved in its profile; the platform does not change
+   * the role, the assigned module or the status of a user, so those stay in this session.
    *
    * @param user - Updated user.
    */
@@ -143,8 +144,12 @@ export class IamApi extends BaseApi {
     if (!this.platformEnabled) {
       const index = this.resources.findIndex(resource => resource.id === user.id);
       this.resources[index] = this.assembler.toResourceFromEntity(user);
+      return respondWith(user);
     }
-    return respondWith(user);
+    return this.profilesEndpoint.getByUserId(Number(user.id)).pipe(
+      switchMap(([profile]) => (profile ? this.profilesEndpoint.update(profile.id, {fullName: user.fullName}) : of(null))),
+      map(() => user)
+    );
   }
 
   /**
