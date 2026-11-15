@@ -52,9 +52,9 @@
       <thead>
         <tr>
           <th>{{ 'inventory.columns.product' | translate }}</th>
-          <th>{{ 'inventory.history.quantity' | translate }}</th>
-          <th>{{ 'inventory.history.valid-until' | translate }}</th>
-          <th>{{ 'inventory.history.actor' | translate }}</th>
+          <th>{{ 'inventory.columns.lot' | translate }}</th>
+          <th>{{ 'inventory.history.price' | translate }}</th>
+          <th>{{ 'inventory.history.period' | translate }}</th>
           <th>{{ 'inventory.columns.status' | translate }}</th>
         </tr>
       </thead>
@@ -62,9 +62,9 @@
         @for (offer of offers(); track offer.id) {
           <tr>
             <td>{{ offer.productName }}</td>
-            <td>{{ offer.quantity }}</td>
-            <td>{{ offer.validUntil.toString() }}</td>
-            <td>{{ offer.createdBy }}</td>
+            <td>{{ offer.lotCode }}</td>
+            <td>{{ offer.price.format() }}</td>
+            <td>{{ offer.startsOn.toString() }} – {{ offer.endsOn.toString() }}</td>
             <td>
               <app-status-badge [tone]="offer.active ? 'success' : 'neutral'">
                 {{ 'inventory.offer-status.' + (offer.active ? 'active' : 'expired') | translate }}

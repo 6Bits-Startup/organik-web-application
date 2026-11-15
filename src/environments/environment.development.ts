@@ -19,6 +19,7 @@ export const environment = {
   platformProviderOfferedProductsEndpointPath: '/offered-products',
   platformProviderStockLotsEndpointPath: '/stock-lots',
   platformProviderInventoryMovementsEndpointPath: '/inventory-movements',
+  platformProviderOffersEndpointPath: '/offers',
   platformProviderSupplyRequestsEndpointPath: '/supply-requests',
   platformProviderShipmentOrdersEndpointPath: '/shipment-orders',
   platformProviderStorageZonesEndpointPath: '/storage-zones',

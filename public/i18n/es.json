@@ -243,13 +243,15 @@
     },
     "offer-form": {
       "title": "Registrar oferta",
-      "quantity": "Unidades en oferta",
-      "valid-until": "Vigente hasta",
-      "available": "{{units}} unidades disponibles",
-      "exceeds": "Las unidades superan el stock disponible",
-      "past": "La oferta no puede terminar en el pasado",
+      "past": "La oferta no puede empezar en el pasado",
       "submit": "Registrar oferta",
-      "saved": "Oferta registrada"
+      "saved": "Oferta registrada",
+      "lot": "Lote en oferta",
+      "price": "Precio de oferta (S/)",
+      "starts-on": "Desde",
+      "ends-on": "Hasta",
+      "invalid-price": "Ingresa un precio mayor a cero",
+      "before-start": "La oferta no puede terminar antes de empezar"
     },
     "offer-status": {
       "active": "Vigente",
@@ -274,7 +276,9 @@
       "actor": "Realizado por",
       "valid-until": "Vigente hasta",
       "empty": "Aún no hay movimientos.",
-      "offers-empty": "Aún no hay ofertas."
+      "offers-empty": "Aún no hay ofertas.",
+      "price": "Precio",
+      "period": "Vigencia"
     }
   },
   "requests": {

@@ -12,6 +12,8 @@ export interface PlatformStockLotResource extends BaseResource {
   minimumStock: number;
   /** Expiration day in ISO-8601 format (`yyyy-MM-dd`). */
   expirationDate: string;
+  location: string;
+  notes: string;
   lowStock: boolean;
 }
 
@@ -26,6 +28,17 @@ export interface CreateStockLotRequest {
   lotCode: string;
   quantity: number;
   minimumStock: number;
+  expirationDate: string;
+  location: string;
+  notes: string;
+}
+
+/**
+ * Request body of `PUT /stock-lots/{stockLotId}`.
+ */
+export interface UpdateStockLotRequest {
+  location: string;
+  notes: string;
   expirationDate: string;
 }
 
@@ -49,4 +62,28 @@ export interface RegisterInventoryMovementRequest {
   type: 'ENTRY' | 'EXIT' | 'ADJUSTMENT' | 'WASTE';
   quantity: number;
   reason: string;
+}
+
+/**
+ * Offer of a stock lot returned by the OrganiK Platform.
+ */
+export interface PlatformOfferResource extends BaseResource {
+  id: number;
+  stockLotId: number;
+  price: number;
+  /** First day of the offer in ISO-8601 format (`yyyy-MM-dd`). */
+  startsOn: string;
+  /** Last day of the offer in ISO-8601 format (`yyyy-MM-dd`). */
+  endsOn: string;
+  active: boolean;
+}
+
+/**
+ * Request body of `POST /offers`.
+ */
+export interface CreateOfferRequest {
+  stockLotId: number;
+  price: number;
+  startsOn: string;
+  endsOn: string;
 }

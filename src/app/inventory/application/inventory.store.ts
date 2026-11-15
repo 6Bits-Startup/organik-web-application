@@ -4,6 +4,7 @@ import {SessionStore} from '../../iam/application/session.store';
 import {ProductsStore} from '../../products/application/products.store';
 import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {DomainError} from '../../shared/domain/model/domain-error';
+import {Money} from '../../shared/domain/model/money';
 import {Quantity} from '../../shared/domain/model/quantity';
 import {Clock} from '../../shared/domain/services/clock';
 import {ExpirationPolicy} from '../domain/model/expiration-policy';
@@ -51,10 +52,12 @@ export interface RegisterWasteCommand {
  * Data collected by the "register offer" form.
  */
 export interface RegisterOfferCommand {
-  productId: string;
-  quantity: number;
+  lotCode: string;
+  price: number;
+  /** First day of the offer in ISO-8601 format (`yyyy-MM-dd`). */
+  startsOn: string;
   /** Last day of the offer in ISO-8601 format (`yyyy-MM-dd`). */
-  validUntil: string;
+  endsOn: string;
 }
 
 /**
@@ -154,9 +157,10 @@ export class InventoryStore {
       .map(offer => ({
         id: offer.id,
         productName: this.productsStore.findProduct(offer.productId)?.name ?? offer.productId,
-        quantity: offer.quantity.value,
-        validUntil: offer.validUntil,
-        createdBy: offer.createdBy,
+        lotCode: offer.lotCode,
+        price: offer.price,
+        startsOn: offer.startsOn,
+        endsOn: offer.endsOn,
         active: offer.isActiveOn(today)
       }));
   });
@@ -289,28 +293,30 @@ export class InventoryStore {
   }
 
   /**
-   * Puts units of a product on offer. The offer does not discount the stock.
+   * Puts the units of a lot on offer at a special price during a period. The offer does not discount the stock.
    *
    * @param command - Data collected by the form.
-   * @throws DomainError if the product has fewer units than offered or the offer is invalid.
+   * @throws DomainError if the lot does not exist or has no stock, or the offer is invalid.
    */
   registerOffer(command: RegisterOfferCommand): Observable<Offer> {
-    const units = Quantity.of(command.quantity);
-    if (units.value > this.stockOf(command.productId)) {
-      throw new DomainError('An offer cannot have more units than the available stock');
+    const lot = this.requireLot(command.lotCode);
+    if (lot.quantity.value < 1) {
+      throw new DomainError('An offer needs a lot with stock');
     }
     const offer = new Offer({
       id: `off-${this.offersSignal().length + 1}`,
-      productId: command.productId,
-      quantity: units,
-      validUntil: CalendarDate.of(command.validUntil),
-      createdBy: this.actorName(),
-      createdOn: this.clock.today()
+      lotCode: lot.lotCode,
+      productId: lot.productId,
+      price: Money.of(command.price),
+      startsOn: CalendarDate.of(command.startsOn),
+      endsOn: CalendarDate.of(command.endsOn)
     });
     return this.api.createOffer(offer).pipe(
       tap(created => this.offersSignal.update(current => [...current, created])),
       switchMap(created =>
-        this.record('offer', created.productId, null, units.value, '', `Offer valid until ${created.validUntil}`).pipe(map(() => created))
+        this.record('offer', created.productId, created.lotCode, null, '', `Offer at ${created.price.format()} until ${created.endsOn}`).pipe(
+          map(() => created)
+        )
       )
     );
   }

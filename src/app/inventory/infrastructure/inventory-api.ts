@@ -11,15 +11,13 @@ import {Offer} from '../domain/model/offer.entity';
 import {StockLot} from '../domain/model/stock-lot.entity';
 import {InventoryEventAssembler} from './inventory-event-assembler';
 import {InventoryMovementsApiEndpoint} from './inventory-movements-api-endpoint';
-import {PlatformInventoryMovementResource, PlatformStockLotResource} from './inventory-platform-response';
+import {PlatformInventoryMovementResource, PlatformOfferResource, PlatformStockLotResource} from './inventory-platform-response';
 import {InventoryEventResource, OfferResource, StockLotResource} from './inventory-response';
 import {inventoryEventsSeed, offersSeed, stockLotsSeed} from './inventory-seed';
 import {OfferAssembler} from './offer-assembler';
+import {OffersApiEndpoint} from './offers-api-endpoint';
 import {StockLotAssembler} from './stock-lot-assembler';
 import {StockLotsApiEndpoint} from './stock-lots-api-endpoint';
-
-/** Location shown for the lots of the platform, which does not keep where a lot is stored. */
-const DEFAULT_LOCATION = 'Reception';
 
 /** Kind of inventory event shown for each movement type of the platform. */
 const EVENT_TYPES_BY_MOVEMENT: Readonly<Record<string, string>> = {
@@ -34,11 +32,11 @@ const EVENT_TYPES_BY_MOVEMENT: Readonly<Record<string, string>> = {
  * Infrastructure gateway to the inventory bounded context of the OrganiK Platform.
  *
  * @remarks
- * Lots are read and registered for the minimarket of the signed-in user. A change in the
- * quantity of a lot is sent as an inventory movement (`WASTE` for losses, `ADJUSTMENT` for a new
- * count) and the history is built from those movements. The platform does not keep the location
- * or the notes of a lot, nor the offers of the web application, so those stay in this session.
- * When {@link PLATFORM_API_ENABLED} is off (unit tests), resources are kept in memory.
+ * Lots and their offers are read and registered for the minimarket of the signed-in user. A
+ * change in the quantity of a lot is sent as an inventory movement (`WASTE` for losses,
+ * `ADJUSTMENT` for a new count) and the history is built from those movements; its location,
+ * notes and expiration date are updated with `PUT /stock-lots/{id}`. When
+ * {@link PLATFORM_API_ENABLED} is off (unit tests), resources are kept in memory.
  */
 export class InventoryApi extends BaseApi {
   private readonly http = inject(HttpClient);
@@ -48,6 +46,7 @@ export class InventoryApi extends BaseApi {
   private readonly offerAssembler = inject(OfferAssembler);
   private readonly stockLotsEndpoint = new StockLotsApiEndpoint(this.http);
   private readonly movementsEndpoint = new InventoryMovementsApiEndpoint(this.http);
+  private readonly offersEndpoint = new OffersApiEndpoint(this.http);
   private readonly resources: StockLotResource[];
   private readonly eventResources: InventoryEventResource[];
   private readonly offerResources: OfferResource[];
@@ -97,7 +96,9 @@ export class InventoryApi extends BaseApi {
         lotCode: lot.lotCode,
         quantity: lot.quantity.value,
         minimumStock,
-        expirationDate: lot.expiresOn.toString()
+        expirationDate: lot.expiresOn.toString(),
+        location: lot.location,
+        notes: lot.notes
       })
       .pipe(
         map(created => {
@@ -108,7 +109,8 @@ export class InventoryApi extends BaseApi {
   }
 
   /**
-   * Replaces the stored version of a lot. On the platform a new quantity is registered as a movement.
+   * Replaces the stored version of a lot. On the platform a new quantity is registered as a
+   * movement and a new location, notes or expiration date with `PUT /stock-lots/{id}`.
    *
    * @param lot - Updated lot entity.
    * @param wasteCause - Cause of the loss when the units were wasted; a new count otherwise.
@@ -116,13 +118,22 @@ export class InventoryApi extends BaseApi {
   updateStockLot(lot: StockLot, wasteCause?: string): Observable<StockLot> {
     const previous = this.platformLots.find(candidate => candidate.lotCode === lot.lotCode);
     this.remember(this.assembler.toResourceFromEntity(lot));
-    if (!this.platformEnabled || !previous || previous.quantity === lot.quantity.value) {
+    if (!this.platformEnabled || !previous) {
       return respondWith(lot);
     }
-    const movement$ = wasteCause
-      ? this.movementsEndpoint.register({stockLotId: previous.id, type: 'WASTE', quantity: previous.quantity - lot.quantity.value, reason: wasteCause})
-      : this.movementsEndpoint.register({stockLotId: previous.id, type: 'ADJUSTMENT', quantity: lot.quantity.value, reason: 'Lot updated'});
+    const quantityChanged = previous.quantity !== lot.quantity.value;
+    const informationChanged =
+      previous.location !== lot.location || previous.notes !== lot.notes || previous.expirationDate !== lot.expiresOn.toString();
+    const movement$: Observable<unknown> = !quantityChanged
+      ? of(null)
+      : wasteCause
+        ? this.movementsEndpoint.register({stockLotId: previous.id, type: 'WASTE', quantity: previous.quantity - lot.quantity.value, reason: wasteCause})
+        : this.movementsEndpoint.register({stockLotId: previous.id, type: 'ADJUSTMENT', quantity: lot.quantity.value, reason: 'Lot updated'});
+    const information$: Observable<unknown> = informationChanged
+      ? this.stockLotsEndpoint.update(previous.id, {location: lot.location, notes: lot.notes, expirationDate: lot.expiresOn.toString()})
+      : of(null);
     return movement$.pipe(
+      switchMap(() => information$),
       switchMap(() => this.stockLotsEndpoint.getById(previous.id)),
       map(updated => {
         this.platformLots = this.platformLots.map(candidate => (candidate.id === updated.id ? updated : candidate));
@@ -182,22 +193,46 @@ export class InventoryApi extends BaseApi {
   }
 
   /**
-   * Fetches every offer.
+   * Fetches the offers of the lots of the minimarket.
    */
   getOffers(): Observable<Offer[]> {
-    return respondWith({offers: structuredClone(this.offerResources)}).pipe(
-      map(response => this.offerAssembler.toEntitiesFromResponse(response))
+    if (!this.platformEnabled) {
+      return respondWith({offers: structuredClone(this.offerResources)}).pipe(
+        map(response => this.offerAssembler.toEntitiesFromResponse(response))
+      );
+    }
+    return this.minimarketLots().pipe(
+      switchMap(lots => {
+        this.platformLots = lots;
+        return lots.length
+          ? forkJoin(lots.map(lot => this.offersEndpoint.getByStockLotId(lot.id).pipe(map(offers => ({lot, offers})))))
+          : of([]);
+      }),
+      map(offersByLot =>
+        this.offerAssembler.toEntitiesFromResponse({
+          offers: offersByLot.flatMap(({lot, offers}) => offers.map(offer => this.toOfferResourceFromPlatform(lot, offer)))
+        })
+      )
     );
   }
 
   /**
-   * Persists an offer.
+   * Persists an offer of a lot.
    *
    * @param offer - Offer entity to store.
    */
   createOffer(offer: Offer): Observable<Offer> {
-    this.offerResources.push(this.offerAssembler.toResourceFromEntity(offer));
-    return respondWith(offer);
+    if (!this.platformEnabled) {
+      this.offerResources.push(this.offerAssembler.toResourceFromEntity(offer));
+      return respondWith(offer);
+    }
+    const lot = this.platformLots.find(candidate => candidate.lotCode === offer.lotCode);
+    if (!lot) {
+      throw new Error(`Lot ${offer.lotCode} is not registered in the platform`);
+    }
+    return this.offersEndpoint
+      .create({stockLotId: lot.id, price: offer.price.amount, startsOn: offer.startsOn.toString(), endsOn: offer.endsOn.toString()})
+      .pipe(map(created => this.offerAssembler.toEntityFromResource(this.toOfferResourceFromPlatform(lot, created))));
   }
 
   /** Lots of the minimarket of the signed-in user; suppliers have no minimarket and therefore no lots. */
@@ -216,14 +251,24 @@ export class InventoryApi extends BaseApi {
   }
 
   private toResourceFromPlatform(lot: PlatformStockLotResource): StockLotResource {
-    const known = this.resources.find(candidate => candidate.lotCode === lot.lotCode);
     return {
       lotCode: lot.lotCode,
       productId: lot.productId,
       quantity: lot.quantity,
       expiresOn: lot.expirationDate,
-      location: known?.location || DEFAULT_LOCATION,
-      notes: known?.notes ?? ''
+      location: lot.location,
+      notes: lot.notes
+    };
+  }
+
+  private toOfferResourceFromPlatform(lot: PlatformStockLotResource, offer: PlatformOfferResource): OfferResource {
+    return {
+      id: String(offer.id),
+      lotCode: lot.lotCode,
+      productId: lot.productId,
+      price: offer.price,
+      startsOn: offer.startsOn,
+      endsOn: offer.endsOn
     };
   }
 

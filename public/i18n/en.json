@@ -243,13 +243,15 @@
     },
     "offer-form": {
       "title": "Register offer",
-      "quantity": "Units on offer",
-      "valid-until": "Valid until",
-      "available": "{{units}} units available",
-      "exceeds": "The units exceed the available stock",
-      "past": "The offer cannot end in the past",
+      "past": "The offer cannot start in the past",
       "submit": "Register offer",
-      "saved": "Offer registered"
+      "saved": "Offer registered",
+      "lot": "Lot on offer",
+      "price": "Offer price (S/)",
+      "starts-on": "From",
+      "ends-on": "Until",
+      "invalid-price": "Enter a price greater than zero",
+      "before-start": "The offer cannot end before it starts"
     },
     "offer-status": {
       "active": "Active",
@@ -274,7 +276,9 @@
       "actor": "Made by",
       "valid-until": "Valid until",
       "empty": "There are no movements yet.",
-      "offers-empty": "There are no offers yet."
+      "offers-empty": "There are no offers yet.",
+      "price": "Price",
+      "period": "Period"
     }
   },
   "requests": {
