@@ -67,12 +67,14 @@
       [value]="'' + attention().shortages"
       [note]="'dashboard.attention.shortages-note' | translate"
     />
-    <app-kpi-card
-      icon="pending_actions"
-      [label]="'dashboard.attention.orders' | translate"
-      [value]="'' + attention().pendingOrders"
-      [note]="'dashboard.attention.orders-note' | translate"
-    />
+    @if (decidesOrders()) {
+      <app-kpi-card
+        icon="pending_actions"
+        [label]="'dashboard.attention.orders' | translate"
+        [value]="'' + attention().pendingOrders"
+        [note]="'dashboard.attention.orders-note' | translate"
+      />
+    }
   </div>
 }
 

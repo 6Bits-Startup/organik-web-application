@@ -19,7 +19,7 @@ import {USERS_SEED} from './iam-seed';
 import {SignInApiEndpoint} from './sign-in-api-endpoint';
 import {SignUpApiEndpoint} from './sign-up-api-endpoint';
 import {SignUpResource} from './sign-up-response';
-import {clearSession, saveSession, saveSessionContext, storedUserId} from './token-storage';
+import {clearSession, saveSession, saveSessionContext, storedMinimarketId, storedUserId} from './token-storage';
 import {UserAssembler} from './user-assembler';
 import {UsersApiEndpoint} from './users-api-endpoint';
 
@@ -78,7 +78,8 @@ export class IamApi extends BaseApi {
   }
 
   /**
-   * Fetches every user with its profile.
+   * Fetches the users of the business of the signed-in user, each with its profile: the staff of
+   * its minimarket or, for a supplier, only the supplier itself.
    */
   getUsers(): Observable<User[]> {
     if (!this.platformEnabled) {
@@ -86,9 +87,17 @@ export class IamApi extends BaseApi {
         map(response => this.assembler.toEntitiesFromResponse(response))
       );
     }
-    return forkJoin([this.usersEndpoint.getAll(), this.profilesEndpoint.getAll()]).pipe(
+    const minimarketId = storedMinimarketId();
+    const userId = storedUserId();
+    const profiles$: Observable<ProfileResource[]> = minimarketId
+      ? this.profilesEndpoint.getByMinimarketId(minimarketId)
+      : userId !== null
+        ? this.profilesEndpoint.getByUserId(userId)
+        : of([]);
+    return forkJoin([this.usersEndpoint.getAll(), profiles$]).pipe(
       map(([users, profiles]) =>
         users
+          .filter(user => profiles.some(profile => profile.userId === user.id))
           .map(user => this.toUserFromPlatform(user, profiles.find(profile => profile.userId === user.id)))
           .filter((user): user is User => user !== null)
       ),

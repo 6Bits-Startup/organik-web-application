@@ -24,6 +24,10 @@ export class ProfilesApiEndpoint extends ErrorHandlingEnabledBaseType {
     this.http.get<ProfileResource[]>(profilesApiEndpointUrl, {params: new HttpParams().set('userId', userId)})
       .pipe(catchError(this.handleError('Failed to fetch profile')));
 
+  getByMinimarketId = (minimarketId: string): Observable<ProfileResource[]> =>
+    this.http.get<ProfileResource[]>(profilesApiEndpointUrl, {params: new HttpParams().set('minimarketId', minimarketId)})
+      .pipe(catchError(this.handleError('Failed to fetch profiles of the minimarket')));
+
   create = (request: CreateProfileRequest): Observable<ProfileResource> =>
     this.http.post<ProfileResource>(profilesApiEndpointUrl, request).pipe(catchError(this.handleError('Failed to create profile')));
 

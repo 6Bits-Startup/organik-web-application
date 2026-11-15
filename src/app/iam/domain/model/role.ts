@@ -74,9 +74,10 @@ export class Role {
  * Roles of the minimarket and their permissions.
  *
  * - Administrator: manages the whole operation, including users and settings.
- * - Operator: runs the daily operation in the store (stock, receptions, conservation).
+ * - Operator: runs the daily operation in the store (stock, waste and conservation) and follows the
+ *   products, requests and incoming orders of the minimarket without deciding on them.
  * - Supplier: keeps their catalog, follows the needs of the minimarkets and creates orders; the
- *   minimarket is the only one that decides an order.
+ *   minimarket is the only one that decides an order. Suppliers do not see other suppliers.
  */
 export const ROLES: readonly Role[] = [
   new Role('administrator', {
@@ -97,19 +98,15 @@ export const ROLES: readonly Role[] = [
     dashboard: 'view',
     inventory: 'manage',
     products: 'view',
-    requests: 'manage',
-    shipments: 'manage',
-    suppliers: 'view',
-    catalog: 'view',
+    requests: 'view',
+    shipments: 'view',
     conservation: 'manage',
-    analytics: 'view',
     alerts: 'view'
   }),
   new Role('supplier', {
     dashboard: 'view',
     requests: 'view',
     shipments: 'manage',
-    suppliers: 'view',
     catalog: 'manage'
   })
 ];
