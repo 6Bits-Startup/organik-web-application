@@ -247,11 +247,14 @@ The address of the backend is `platformProviderApiBaseUrl` in `src/environments/
 - Minimarket staff read the data of their minimarket (`minimarketId`) and suppliers the data of their company (`supplierId`).
 - A waste is sent as a `WASTE` inventory movement and a new quantity as an `ADJUSTMENT`; the history of the inventory is built from those movements.
 - Accepting an order (`/shipment-orders/{id}/acceptances`) registers its lots in the backend, so the frontend reads the lots again.
+- Storage zones, their readings and the notifications belong to a minimarket. Conservation has forms to create zones and record manual readings; the alerts screen lists the notifications raised by the platform and marks them as read.
+- The location, notes and expiration date of a lot are updated with `PUT /stock-lots/{id}`, a published catalog entry with `PUT /offered-products/{id}` and the name of a user with `PUT /profiles/{id}`.
+- An offer puts a lot on sale at a price from a start day to an end day (`POST /offers`).
 - The expiration thresholds of the settings belong to the minimarket: the administrator saves them in its profile (`PUT /profiles/{id}/preferences`) and the platform applies them to every profile of the minimarket, including the users invited later.
 - `PLATFORM_API_ENABLED` turns the integration on in `app.config.ts`; unit tests leave it off and use the in-memory seeds.
 
 Known limitations of the current backend:
-- The location and notes of a lot, a new expiration date of a lot, the offers of the minimarket, the edition of a published catalog entry and the edition of users are kept only in the browser session.
+- The role, assigned module and status of a user are kept only in the browser session; the platform only updates the name.
 - The storage condition of a product is derived from its category, and readings are per storage zone (not per product).
 - The avoided loss of the analytics is 0 because the platform has no prices; the operational health is estimated from expired lots, lots about to expire and out-of-range readings.
 - Users invited from `/users` get the temporary password `Organik2026!`.
