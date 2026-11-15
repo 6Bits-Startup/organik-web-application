@@ -25,6 +25,7 @@ export const environment = {
   platformProviderStorageReadingsEndpointPath: '/storage-readings',
   platformProviderOperationalIndicatorsEndpointPath: '/operational-indicators',
   platformProviderActivityRecordsEndpointPath: '/activity-records',
+  platformProviderNotificationsEndpointPath: '/notifications',
   /** Public marketing site of OrganiK that links to this application. */
   landingUrl: 'https://organik-d6e58.web.app/'
 };

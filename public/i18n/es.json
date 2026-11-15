@@ -318,6 +318,19 @@
       "expiration": "Vencimiento próximo",
       "temperature": "Temperatura fuera de rango",
       "minimum-stock": "Stock mínimo alcanzado"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "unread": "{{count}} sin leer",
+      "mark-as-read": "Marcar como leída",
+      "empty": "No hay notificaciones.",
+      "types": {
+        "expiration": "Vencimiento",
+        "conservation": "Conservación",
+        "low-stock": "Stock bajo",
+        "replenishment": "Reposición",
+        "order": "Pedido"
+      }
     }
   },
   "conservation": {

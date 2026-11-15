@@ -39,3 +39,33 @@
     </ul>
   </section>
 </div>
+
+<section class="notifications" aria-labelledby="notifications-title">
+  <h2 id="notifications-title">
+    {{ 'alerts.notifications.title' | translate }}
+    @if (unreadCount()) {
+      <span class="notifications__unread">{{ 'alerts.notifications.unread' | translate: {count: unreadCount()} }}</span>
+    }
+  </h2>
+  <ul class="notifications__list">
+    @for (notification of notifications(); track notification.id) {
+      <li class="notification" [class.notification--read]="notification.read">
+        <span class="notification__dot" [class]="'notification__dot--' + notification.severity" aria-hidden="true"></span>
+        <div class="notification__body">
+          <h3>{{ notification.title }}</h3>
+          <p>
+            {{ 'alerts.notifications.types.' + notification.type | translate }} ·
+            {{ notification.createdAt.toDisplayString() }}
+          </p>
+        </div>
+        @if (!notification.read) {
+          <button mat-button type="button" (click)="markAsRead(notification.id)">
+            {{ 'alerts.notifications.mark-as-read' | translate }}
+          </button>
+        }
+      </li>
+    } @empty {
+      <li class="active__empty">{{ 'alerts.notifications.empty' | translate }}</li>
+    }
+  </ul>
+</section>

@@ -1,6 +1,6 @@
 import {Component, inject, OnInit} from '@angular/core';
 import {RouterLink} from '@angular/router';
-import {MatAnchor} from '@angular/material/button';
+import {MatAnchor, MatButton} from '@angular/material/button';
 import {TranslatePipe} from '@ngx-translate/core';
 import {AlertItem} from '../../components/alert-item/alert-item';
 import {AlertsStore} from '../../../application/alerts.store';
@@ -12,6 +12,7 @@ import {KpiCard} from '../../../../shared/presentation/components/kpi-card/kpi-c
   imports: [
     RouterLink,
     MatAnchor,
+    MatButton,
     TranslatePipe,
     KpiCard,
     AlertTrendChart,
@@ -31,6 +32,12 @@ export class AlertsOverview implements OnInit {
   protected readonly indicators = this.analytics.indicators;
   protected readonly trend = this.analytics.trend;
   protected readonly alerts = this.alertsStore.alerts;
+  protected readonly notifications = this.alertsStore.notifications;
+  protected readonly unreadCount = this.alertsStore.unreadCount;
+
+  protected markAsRead(notificationId: string): void {
+    this.alertsStore.markAsRead(notificationId).subscribe();
+  }
 
   ngOnInit(): void {
     this.analytics.loadAnalytics();

@@ -318,6 +318,19 @@
       "expiration": "Upcoming expiration",
       "temperature": "Temperature out of range",
       "minimum-stock": "Minimum stock reached"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "unread": "{{count}} unread",
+      "mark-as-read": "Mark as read",
+      "empty": "There are no notifications.",
+      "types": {
+        "expiration": "Expiration",
+        "conservation": "Conservation",
+        "low-stock": "Low stock",
+        "replenishment": "Replenishment",
+        "order": "Order"
+      }
     }
   },
   "conservation": {
