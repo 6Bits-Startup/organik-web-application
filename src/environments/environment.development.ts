@@ -7,13 +7,26 @@ export const environment = {
   apiLatencyMs: 250,
   /** Language used when the user has not chosen one yet. */
   defaultLanguage: 'en',
-  /** Fake REST API (Beeceptor) used until the OrganiK web services exist; an empty `baseUrl` keeps every gateway in memory. */
-  api: {
-    baseUrl: 'https://organik.free.beeceptor.com/api/v1',
-    timeoutMs: 8000,
-    /** How long (ms) an answer of the API is reused before asking again; the free plan allows few requests per day. */
-    cacheMs: 300000
-  },
+  /** Base URL of the OrganiK Platform RESTful API. */
+  platformProviderApiBaseUrl: 'http://localhost:8080/api/v1',
+  platformProviderSignInEndpointPath: '/tokens',
+  platformProviderSignUpEndpointPath: '/users',
+  platformProviderUsersEndpointPath: '/users',
+  platformProviderProfilesEndpointPath: '/profiles',
+  platformProviderCategoriesEndpointPath: '/categories',
+  platformProviderProductsEndpointPath: '/products',
+  platformProviderSuppliersEndpointPath: '/suppliers',
+  platformProviderOfferedProductsEndpointPath: '/offered-products',
+  platformProviderStockLotsEndpointPath: '/stock-lots',
+  platformProviderInventoryMovementsEndpointPath: '/inventory-movements',
+  platformProviderOffersEndpointPath: '/offers',
+  platformProviderSupplyRequestsEndpointPath: '/supply-requests',
+  platformProviderShipmentOrdersEndpointPath: '/shipment-orders',
+  platformProviderStorageZonesEndpointPath: '/storage-zones',
+  platformProviderStorageReadingsEndpointPath: '/storage-readings',
+  platformProviderOperationalIndicatorsEndpointPath: '/operational-indicators',
+  platformProviderActivityRecordsEndpointPath: '/activity-records',
+  platformProviderNotificationsEndpointPath: '/notifications',
   /** Public marketing site of OrganiK that links to this application. */
   landingUrl: 'http://localhost:5500/'
 };

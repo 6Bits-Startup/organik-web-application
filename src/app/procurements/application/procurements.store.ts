@@ -7,11 +7,9 @@ import {SuppliersStore} from '../../suppliers/application/suppliers.store';
 import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {DomainError} from '../../shared/domain/model/domain-error';
 import {Quantity} from '../../shared/domain/model/quantity';
-import {Clock} from '../../shared/domain/services/clock';
 import {ShipmentLine} from '../domain/model/shipment-line';
 import {OrderStatus, ShipmentOrder} from '../domain/model/shipment-order.entity';
 import {ProcurementsApi} from '../infrastructure/procurements-api';
-import {LINKED_MINIMARKETS} from '../infrastructure/procurements-seed';
 
 /** One product a supplier asks to send, taken from its own catalog. */
 export interface OrderLineCommand {
@@ -71,7 +69,6 @@ export class ProcurementsStore {
   private readonly suppliers = inject(SuppliersStore);
   private readonly inventory = inject(InventoryStore);
   private readonly session = inject(SessionStore);
-  private readonly clock = inject(Clock);
 
   private readonly shipmentsSignal = signal<ShipmentOrder[]>([]);
   private loaded = false;
@@ -91,8 +88,10 @@ export class ProcurementsStore {
   /** How many orders wait for an answer. */
   readonly pendingCount = computed(() => this.pendingItems().length);
 
+  private readonly linkedMinimarketsSignal = signal<{id: string; name: string}[]>([]);
+
   /** Minimarkets the signed-in supplier can send orders to. */
-  readonly linkedMinimarkets = LINKED_MINIMARKETS;
+  readonly linkedMinimarkets = this.linkedMinimarketsSignal.asReadonly();
 
   /**
    * Loads the orders (and the data they refer to) once.
@@ -107,6 +106,7 @@ export class ProcurementsStore {
     }
     this.loaded = true;
     this.api.getShipmentOrders().subscribe(shipments => this.shipmentsSignal.set(shipments));
+    this.api.getLinkedMinimarkets().subscribe(minimarkets => this.linkedMinimarketsSignal.set(minimarkets));
   }
 
   /**
@@ -141,7 +141,7 @@ export class ProcurementsStore {
     if (!user?.supplierId) {
       throw new DomainError('Only a supplier can create an order');
     }
-    if (!this.linkedMinimarkets.some(minimarket => minimarket.id === command.minimarketId)) {
+    if (!this.linkedMinimarkets().some(minimarket => minimarket.id === command.minimarketId)) {
       throw new DomainError('The minimarket is not linked with the supplier');
     }
     const lines = command.lines.map(line => {
@@ -160,7 +160,7 @@ export class ProcurementsStore {
       supplierId: user.supplierId,
       minimarketId: command.minimarketId,
       lines,
-      createdOn: this.clock.today(),
+      createdOn: CalendarDate.today(),
       createdBy: user.fullName,
       status: 'pending'
     });
@@ -175,7 +175,7 @@ export class ProcurementsStore {
    */
   acceptOrder(orderId: string): Observable<ShipmentOrder> {
     const order = this.requireDecidable(orderId);
-    const accepted = order.accept(this.session.currentUser()!.fullName, this.clock.today());
+    const accepted = order.accept(this.session.currentUser()!.fullName, CalendarDate.today());
     return this.save(accepted).pipe(
       switchMap(saved =>
         this.inventory
@@ -202,7 +202,7 @@ export class ProcurementsStore {
    */
   rejectOrder(orderId: string, reason: string): Observable<ShipmentOrder> {
     const order = this.requireDecidable(orderId);
-    return this.save(order.reject(this.session.currentUser()!.fullName, this.clock.today(), reason));
+    return this.save(order.reject(this.session.currentUser()!.fullName, CalendarDate.today(), reason));
   }
 
   private requireDecidable(orderId: string): ShipmentOrder {
@@ -241,7 +241,7 @@ export class ProcurementsStore {
       supplierId: order.supplierId,
       supplierName: this.suppliers.findById(order.supplierId)?.businessName ?? order.supplierId,
       minimarketId: order.minimarketId,
-      minimarketName: this.linkedMinimarkets.find(minimarket => minimarket.id === order.minimarketId)?.name ?? order.minimarketId,
+      minimarketName: this.linkedMinimarkets().find(minimarket => minimarket.id === order.minimarketId)?.name ?? order.minimarketId,
       productNames: lines.map(line => line.productName).join(', '),
       lines,
       createdOn: order.createdOn,

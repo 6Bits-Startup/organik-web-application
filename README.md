@@ -5,7 +5,7 @@
 
 The codebase is organized around Domain-Driven Design (DDD) bounded contexts and layered responsibilities, following the twelve bounded contexts of the project report.
 
-The application consumes a fake REST API hosted on Beeceptor (`https://organik.free.beeceptor.com/api/v1`) for users, products and inventory, and keeps working with in-memory data when that API is unavailable. The marketing site lives in a separate repository, [`organik-frontend-v2`](https://github.com/5Bits-OrganiK/organik-frontend-v2).
+The application consumes the RESTful API of the [OrganiK Platform](https://github.com/6Bits-Startup/organik-platform) backend (`http://localhost:8080/api/v1` when both run locally). Unit tests keep working with in-memory data. The marketing site lives in a separate repository, [`organik-frontend-v2`](https://github.com/5Bits-OrganiK/organik-frontend-v2).
 
 - Application: https://organik-app-d6e58.web.app
 - Landing page: https://organik-d6e58.web.app
@@ -24,7 +24,7 @@ The application consumes a fake REST API hosted on Beeceptor (`https://organik.f
 - Signal-based state management and reactive UI updates (`signal`, `computed`)
 - Material Design 3 styling with the OrganiK green palette (Geist and Fraunces typefaces)
 - Internationalization with English (default) and Spanish resources using `@ngx-translate`
-- HTTP communication with a fake REST API, with a local fallback, a five-minute cache and the Assembler pattern
+- HTTP communication with the OrganiK Platform through endpoint classes, `BaseApi` gateways, a JWT interceptor and the Assembler pattern
 - Layered organization by bounded context:
   - `iam`, `profiles`, `dashboard`, `analytics`, `inventory`, `products`
   - `requisition`, `procurements`, `suppliers`, `conservation`, `communication`
@@ -46,7 +46,7 @@ The enabled routes (all protected by `authGuard` except `login` and `register`) 
 - `profiles`, `settings`
 - `prototype` (entry screen with the interaction map)
 
-Each role only sees the modules it is granted: the administrator manages every module, the operator runs the daily operation and the supplier follows the dashboard and the requests, publishes its catalog and creates orders (it can see the suppliers). Only the administrator of the destination minimarket accepts or rejects an order. Demo supplier account: `marco@bioandes.pe` (same demo password).
+Each role only sees the modules it is granted: the administrator manages every module; the operator runs the daily operation (inventory, waste and conservation) and follows the products, requests and incoming orders without deciding on them; the supplier follows the dashboard and the requests, publishes its catalog and creates orders, and does not see other suppliers. Only the administrator of the destination minimarket accepts or rejects an order, and the users list only shows the people of the minimarket of the signed-in user. Create the accounts at `/register` (administrator or supplier); they are stored in the backend.
 
 ## Architecture Overview
 The application structure follows Domain-Driven Design (DDD) bounded contexts, one folder each:
@@ -62,10 +62,10 @@ The application structure follows Domain-Driven Design (DDD) bounded contexts, o
 - **`suppliers`**: Supplier directory and recommendations.
 - **`conservation`**: Storage zones, sensor readings and conservation alerts.
 - **`communication`**: Alerts and notifications shown to the user.
-- **`shared`**: Shared Kernel with value objects, the clock port, the fake API client, the shell layout and reusable UI parts.
+- **`shared`**: Shared Kernel with value objects, the base API types, the shell layout and reusable UI parts.
 
 Each bounded context applies the layers it needs from these four:
-- **`domain`**: Entities, value objects and domain services, free from Angular dependencies.
+- **`domain`**: Entities and value objects under `domain/model`, free from Angular dependencies.
 - **`application`**: Signal-based stores (`signal`, `computed`) that coordinate use cases and build read models.
 - **`infrastructure`**: Gateways, resource contracts, assemblers and seeds that talk to the backend.
 - **`presentation`**: Standalone components, routed views, forms and the routes of the context.
@@ -97,14 +97,14 @@ organik-website-v2/
 │   │   ├── environment.ts              # Production environment configuration
 │   │   └── environment.development.ts  # Local development environment configuration
 │   └── app/                            # Application root and bounded contexts
-│       ├── app.config.ts               # Application-level providers (router, i18n, http, fake API)
+│       ├── app.config.ts               # Application-level providers (router, i18n, http, IAM interceptor)
 │       ├── app.routes.ts               # Root routing definitions and guards
 │       ├── app.ts                      # Root component class
 │       ├── iam/                        # Identity and Access Management
 │       │   ├── domain/                 # User, Role, Registration and authentication errors
 │       │   ├── infrastructure/         # IamApi, assembler and resources
 │       │   ├── application/            # AuthStore, SessionStore, UsersStore
-│       │   └── presentation/           # Login, register, user views, guards
+│       │   └── presentation/           # Login, register and user views
 │       ├── profiles/                   # Profiles and business settings
 │       │   ├── application/            # SettingsStore
 │       │   └── presentation/           # Profile list and settings views
@@ -137,12 +137,12 @@ organik-website-v2/
 │       │   ├── application/            # ProcurementsStore
 │       │   └── presentation/           # Order list, form and detail
 │       ├── suppliers/                  # Suppliers
-│       │   ├── domain/                 # Supplier, SupplierSuggestionService
+│       │   ├── domain/                 # Supplier, SupplierSpecialty
 │       │   ├── infrastructure/         # SuppliersApi, assembler, resources
 │       │   ├── application/            # SuppliersStore
 │       │   └── presentation/           # Directory, detail, form and suggestions
 │       ├── conservation/               # Conservation
-│       │   ├── domain/                 # StorageZone, ConservationRange, alert service
+│       │   ├── domain/                 # StorageZone, ConservationRange, ConservationAlert
 │       │   ├── infrastructure/         # ConservationApi, assemblers, resources
 │       │   ├── application/            # ConservationStore
 │       │   └── presentation/           # Monitoring and alerts views
@@ -150,7 +150,7 @@ organik-website-v2/
 │       │   ├── application/            # AlertsStore, Notifier
 │       │   └── presentation/           # Alerts overview and alert item
 │       └── shared/                     # Shared Kernel
-│           ├── domain/                 # Value objects, Clock port, DomainError
+│           ├── domain/                 # Value objects, DomainError
 │           ├── infrastructure/         # FakeApi, in-memory gateway, page title strategy
 │           ├── application/            # LanguageStore, PageTitleStore
 │           └── presentation/           # Shell layout, sidebar, header, search, shared components
@@ -177,7 +177,7 @@ organik-website-v2/
 - **Forms**: Angular Reactive Forms
 - **Internationalization**: `@ngx-translate/core` & `@ngx-translate/http-loader`
 - **Testing**: Vitest with jsdom (`ng test`)
-- **Mock API**: Beeceptor (CRUD routes)
+- **Backend**: OrganiK Platform (Spring Boot RESTful API with JWT)
 - **Hosting**: Firebase Hosting
 - **Diagrams**: PlantUML
 
@@ -185,7 +185,7 @@ organik-website-v2/
 - **User Stories & Requirements Traceability**: [`docs/user-stories.md`](docs/user-stories.md) - Functional requirement specifications and RTM mapping.
 - **Class Diagram**: [`docs/class-diagram.puml`](docs/class-diagram.puml) - PlantUML architectural model of bounded contexts, entities, and services.
 - **Architectural Decision Records (ADRs)**: [`docs/adrs.md`](docs/adrs.md) - Key architectural and technology choices.
-- **Fake API Specification**: [`docs/openapi-fake-api.yaml`](docs/openapi-fake-api.yaml) - OpenAPI description of the Beeceptor routes.
+- **API Reference**: Scalar API Reference of the backend at `http://localhost:8080/scalar`.
 - **Contributing Guidelines**: [`CONTRIBUTING.md`](CONTRIBUTING.md) - DDD layers, OOP rules, Git Flow, Conventional Commits, and coding standards.
 - **Changelog**: [`CHANGELOG.md`](CHANGELOG.md) - Version history following Keep a Changelog and SemVer conventions.
 
@@ -193,6 +193,7 @@ organik-website-v2/
 Before running the project, make sure the environment includes:
 - Node.js (v20+ recommended)
 - npm
+- The [OrganiK Platform](https://github.com/6Bits-Startup/organik-platform) backend running locally (Java 27, Maven Wrapper and MySQL)
 
 ## Installation
 Install project dependencies from the project root:
@@ -212,40 +213,51 @@ This starts the application at:
 
 - `http://localhost:4200/`
 
-## Fake API
-The application consumes a fake REST API hosted on Beeceptor, configured in `environment.api`:
+## Running Frontend and Backend Locally
+1. Clone both repositories in the same folder:
 
-- `https://organik.free.beeceptor.com/api/v1`
+   ```bash
+   git clone https://github.com/6Bits-Startup/organik-platform.git
+   git clone https://github.com/6Bits-Startup/organik-web-application.git
+   ```
 
-The API exposes three CRUD routes (`GET`, `POST`, `PUT`, `PATCH` and `DELETE`), documented in [`docs/openapi-fake-api.yaml`](docs/openapi-fake-api.yaml):
+2. Start MySQL (the `dev` profile creates the `organik-db` database) and run the backend from `organik-platform`:
 
-| Route        | Resource                                  | Identifier |
-|--------------|-------------------------------------------|------------|
-| `/users`     | Accounts used to sign in and sign up      | `id`       |
-| `/products`  | Products of the catalog                   | `id`       |
-| `/inventory` | Stock lots received by the minimarket     | `lotCode`  |
+   ```bash
+   ./mvnw spring-boot:run
+   ```
 
-The free Beeceptor plan keeps about twelve objects in total (oldest first) and answers a limited number of requests per day. For that reason every gateway:
-- merges what the API returns with its local seed,
-- caches the answers for five minutes (memory and `localStorage`), and
-- keeps working with its in-memory data when the API answers an error such as `429`.
+   The API answers at `http://localhost:8080/api/v1` and its documentation at `http://localhost:8080/scalar`. On start-up the backend seeds the roles and the default product categories.
 
-Set `environment.api.baseUrl` to an empty string to run entirely in memory.
+3. Install the dependencies and run the frontend from `organik-web-application`:
 
-## Development Workflow
-For local development, start the application and sign in with one of the seeded accounts (or create your own at `/register`):
+   ```bash
+   npm install
+   npm start
+   ```
 
-```bash
-# Angular Dev Server
-npm start
-```
+4. Open `http://localhost:4200/register` and create a minimarket administrator; sign out and create a supplier (phone and categories are required for suppliers). Then sign in with those accounts.
 
-| E-mail              | Password       | Role          |
-|---------------------|----------------|---------------|
-| albino@organik.pe   | Organik2026!   | Administrator |
-| cielo@organik.pe    | Organik2026!   | Operator      |
+The address of the backend is `platformProviderApiBaseUrl` in `src/environments/environment*.ts`, and each resource has its own `platformProvider<Resource>EndpointPath`. Change it before building for an environment that is not local.
 
-`alexis@organik.pe` is a supplier whose invitation is still pending, so it cannot sign in. These credentials are for development only.
+## OrganiK Platform Integration
+- Each bounded context has endpoint classes (`*-api-endpoint.ts`) that extend `ErrorHandlingEnabledBaseType` and a gateway (`*-api.ts`) that extends `BaseApi`, composes those endpoints and maps the platform resources into the existing resources and assemblers.
+- `POST /tokens` returns the JWT; it is stored in `localStorage` (`token`) with the user identifier and the minimarket or supplier of the profile. `iamInterceptor` adds `Authorization: Bearer <token>` to every request.
+- A web application user combines the IAM user (`/users`) with its profile (`/profiles`). Signing up creates the user, signs it in and creates its profile; suppliers also create their record in `/suppliers`.
+- Minimarket staff read the data of their minimarket (`minimarketId`) and suppliers the data of their company (`supplierId`).
+- A waste is sent as a `WASTE` inventory movement and a new quantity as an `ADJUSTMENT`; the history of the inventory is built from those movements.
+- Accepting an order (`/shipment-orders/{id}/acceptances`) registers its lots in the backend, so the frontend reads the lots again.
+- Storage zones, their readings and the notifications belong to a minimarket. Conservation has forms to create zones and record manual readings; the alerts screen lists the notifications raised by the platform and marks them as read.
+- The location, notes and expiration date of a lot are updated with `PUT /stock-lots/{id}`, a published catalog entry with `PUT /offered-products/{id}` and the name of a user with `PUT /profiles/{id}`.
+- An offer puts a lot on sale at a price from a start day to an end day (`POST /offers`).
+- The expiration thresholds of the settings belong to the minimarket: the administrator saves them in its profile (`PUT /profiles/{id}/preferences`) and the platform applies them to every profile of the minimarket, including the users invited later.
+- `PLATFORM_API_ENABLED` turns the integration on in `app.config.ts`; unit tests leave it off and use the in-memory seeds.
+
+Known limitations of the current backend:
+- The role, assigned module and status of a user are kept only in the browser session; the platform only updates the name.
+- The storage condition of a product is derived from its category, and readings are per storage zone (not per product).
+- The avoided loss of the analytics is 0 because the platform has no prices; the operational health is estimated from expired lots, lots about to expire and out-of-range readings.
+- Users invited from `/users` get the temporary password `Organik2026!`.
 
 ## Available Scripts
 From the project root, the following scripts are available:

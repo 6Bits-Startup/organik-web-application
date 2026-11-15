@@ -1,15 +1,14 @@
 import {computed, inject, Injectable, signal} from '@angular/core';
-import {Observable, tap} from 'rxjs';
+import {Observable, ReplaySubject, tap} from 'rxjs';
 import {SessionStore} from '../../iam/application/session.store';
 import {ProductsStore} from '../../products/application/products.store';
 import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {DomainError} from '../../shared/domain/model/domain-error';
 import {EmailAddress} from '../../shared/domain/model/email-address';
 import {Quantity} from '../../shared/domain/model/quantity';
-import {Clock} from '../../shared/domain/services/clock';
 import {OfferedProduct} from '../domain/model/offered-product.entity';
 import {Supplier} from '../domain/model/supplier.entity';
-import {SupplierSuggestionService} from '../domain/services/supplier-suggestion.service';
+import {SUPPLIER_SPECIALTIES} from '../domain/model/supplier-specialty';
 import {SuppliersApi} from '../infrastructure/suppliers-api';
 
 /**
@@ -60,20 +59,24 @@ export interface OfferingItem {
  */
 export class SuppliersStore {
   private readonly api = inject(SuppliersApi);
-  private readonly suggestionService = new SupplierSuggestionService();
   private readonly productsStore = inject(ProductsStore);
   private readonly session = inject(SessionStore);
-  private readonly clock = inject(Clock);
 
   private readonly suppliersSignal = signal<Supplier[]>([]);
   private readonly offeredSignal = signal<OfferedProduct[]>([]);
   private loaded = false;
+  private readonly loadedSubject = new ReplaySubject<void>(1);
 
   /** Read-only projection of the known suppliers. */
   readonly suppliers = this.suppliersSignal.asReadonly();
 
   /** Suppliers grouped by the alert situation they are recommended for. */
-  readonly suggestions = computed(() => this.suggestionService.suggest(this.suppliersSignal()));
+  readonly suggestions = computed(() =>
+    SUPPLIER_SPECIALTIES.map(reason => ({
+      reason,
+      suppliers: this.suppliersSignal().filter(supplier => supplier.hasSpecialty(reason))
+    })).filter(suggestion => suggestion.suppliers.length > 0)
+  );
 
   /** Every product the suppliers offer, with the product and the supplier names. */
   readonly offerings = computed<OfferingItem[]>(() =>
@@ -116,15 +119,20 @@ export class SuppliersStore {
 
   /**
    * Loads the suppliers once; later calls reuse the cached list.
+   *
+   * @returns A stream that emits once the offered products are available.
    */
-  loadSuppliers(): void {
-    if (this.loaded) {
-      return;
+  loadSuppliers(): Observable<void> {
+    if (!this.loaded) {
+      this.loaded = true;
+      this.productsStore.loadProducts();
+      this.api.getSuppliers().subscribe(suppliers => this.suppliersSignal.set(suppliers));
+      this.api.getOfferedProducts().subscribe(offered => {
+        this.offeredSignal.set(offered);
+        this.loadedSubject.next();
+      });
     }
-    this.loaded = true;
-    this.productsStore.loadProducts();
-    this.api.getSuppliers().subscribe(suppliers => this.suppliersSignal.set(suppliers));
-    this.api.getOfferedProducts().subscribe(offered => this.offeredSignal.set(offered));
+    return this.loadedSubject.asObservable();
   }
 
   /**
@@ -175,7 +183,7 @@ export class SuppliersStore {
       lotCode: command.lotCode,
       availableQuantity: Quantity.of(command.availableQuantity),
       expiresOn: CalendarDate.of(command.expiresOn),
-      updatedOn: this.clock.today()
+      updatedOn: CalendarDate.today()
     });
     return this.api
       .createOfferedProduct(offered)
@@ -200,7 +208,7 @@ export class SuppliersStore {
     }
     const updated = existing.update(
       {lotCode: command.lotCode, availableQuantity: Quantity.of(command.availableQuantity), expiresOn: CalendarDate.of(command.expiresOn)},
-      this.clock.today()
+      CalendarDate.today()
     );
     return this.api
       .updateOfferedProduct(updated)

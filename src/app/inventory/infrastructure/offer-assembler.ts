@@ -1,6 +1,6 @@
 import {Injectable} from '@angular/core';
 import {CalendarDate} from '../../shared/domain/model/calendar-date';
-import {Quantity} from '../../shared/domain/model/quantity';
+import {Money} from '../../shared/domain/model/money';
 import {Offer} from '../domain/model/offer.entity';
 import {OfferResource, OffersResponse} from './inventory-response';
 
@@ -17,11 +17,11 @@ export class OfferAssembler {
   toEntityFromResource(resource: OfferResource): Offer {
     return new Offer({
       id: resource.id,
+      lotCode: resource.lotCode,
       productId: resource.productId,
-      quantity: Quantity.of(resource.quantity),
-      validUntil: CalendarDate.of(resource.validUntil),
-      createdBy: resource.createdBy,
-      createdOn: CalendarDate.of(resource.createdOn)
+      price: Money.of(resource.price),
+      startsOn: CalendarDate.of(resource.startsOn),
+      endsOn: CalendarDate.of(resource.endsOn)
     });
   }
 
@@ -42,11 +42,11 @@ export class OfferAssembler {
   toResourceFromEntity(offer: Offer): OfferResource {
     return {
       id: offer.id,
+      lotCode: offer.lotCode,
       productId: offer.productId,
-      quantity: offer.quantity.value,
-      validUntil: offer.validUntil.toString(),
-      createdBy: offer.createdBy,
-      createdOn: offer.createdOn.toString()
+      price: offer.price.amount,
+      startsOn: offer.startsOn.toString(),
+      endsOn: offer.endsOn.toString()
     };
   }
 }

@@ -1,41 +1,47 @@
 <form [formGroup]="form" (ngSubmit)="save()" novalidate>
   <app-form-card [heading]="'inventory.offer-form.title' | translate">
     <div class="ok-field">
-      <label for="product">{{ 'inventory.form.product' | translate }}</label>
+      <label for="lot">{{ 'inventory.offer-form.lot' | translate }}</label>
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <select matNativeControl id="product" formControlName="productId">
-          <option value="" disabled>{{ 'form.select' | translate }}</option>
-          @for (product of products(); track product.id) {
-            <option [value]="product.id">{{ product.name }}</option>
+        <mat-select id="lot" formControlName="lotCode" [placeholder]="'form.select' | translate">
+          @for (lot of lots(); track lot.lotCode) {
+            <mat-option [value]="lot.lotCode">{{ lot.lotCode }} · {{ lot.productName }} ({{ lot.quantity }})</mat-option>
           }
-        </select>
+        </mat-select>
         <mat-error>{{ 'form.required' | translate }}</mat-error>
       </mat-form-field>
     </div>
 
     <div class="ok-field">
-      <label for="quantity">{{ 'inventory.offer-form.quantity' | translate }}</label>
+      <label for="price">{{ 'inventory.offer-form.price' | translate }}</label>
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <input matInput id="quantity" type="number" min="1" inputmode="numeric" formControlName="quantity"/>
-        @if (availableUnits() !== null) {
-          <mat-hint>{{ 'inventory.offer-form.available' | translate: {units: availableUnits()} }}</mat-hint>
-        }
-        @if (form.controls.quantity.hasError('required')) {
+        <input matInput id="price" type="number" min="0.01" step="0.01" inputmode="decimal" formControlName="price"/>
+        @if (form.controls.price.hasError('required')) {
           <mat-error>{{ 'form.required' | translate }}</mat-error>
-        } @else if (form.controls.quantity.hasError('exceeds')) {
-          <mat-error>{{ 'inventory.offer-form.exceeds' | translate }}</mat-error>
         } @else {
-          <mat-error>{{ 'form.invalid-number' | translate }}</mat-error>
+          <mat-error>{{ 'inventory.offer-form.invalid-price' | translate }}</mat-error>
         }
       </mat-form-field>
     </div>
 
     <div class="ok-field">
-      <label for="valid-until">{{ 'inventory.offer-form.valid-until' | translate }}</label>
+      <label for="starts-on">{{ 'inventory.offer-form.starts-on' | translate }}</label>
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <input matInput id="valid-until" type="date" [min]="minDate" formControlName="validUntil"/>
-        @if (form.controls.validUntil.hasError('past')) {
+        <input matInput id="starts-on" type="date" [min]="minDate" formControlName="startsOn"/>
+        @if (form.controls.startsOn.hasError('past')) {
           <mat-error>{{ 'inventory.offer-form.past' | translate }}</mat-error>
+        } @else {
+          <mat-error>{{ 'form.required' | translate }}</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <div class="ok-field">
+      <label for="ends-on">{{ 'inventory.offer-form.ends-on' | translate }}</label>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <input matInput id="ends-on" type="date" [min]="form.controls.startsOn.value" formControlName="endsOn"/>
+        @if (form.controls.endsOn.hasError('beforeStart')) {
+          <mat-error>{{ 'inventory.offer-form.before-start' | translate }}</mat-error>
         } @else {
           <mat-error>{{ 'form.required' | translate }}</mat-error>
         }

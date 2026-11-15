@@ -1,0 +1,45 @@
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-form-card [heading]="'conservation.reading-form.title' | translate">
+    <div class="ok-field">
+      <label for="reading-zone">{{ 'conservation.columns.zone' | translate }}</label>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <select matNativeControl id="reading-zone" formControlName="zoneId">
+          <option value="" disabled>{{ 'form.select' | translate }}</option>
+          @for (zone of zones(); track zone.id) {
+            <option [value]="zone.id">{{ zone.name }}</option>
+          }
+        </select>
+        <mat-error>{{ 'form.required' | translate }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="ok-field">
+      <label for="reading-temperature">{{ 'conservation.history.temperature' | translate }} (°C)</label>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <input matInput id="reading-temperature" type="number" step="0.1" formControlName="temperature"/>
+        <mat-error>{{ 'conservation.reading-form.invalid-temperature' | translate }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="ok-field">
+      <label for="reading-humidity">{{ 'conservation.history.humidity' | translate }} (%)</label>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <input matInput id="reading-humidity" type="number" step="0.1" formControlName="humidity"/>
+        <mat-error>{{ 'conservation.reading-form.invalid-humidity' | translate }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="ok-field">
+      <label for="reading-recorded">{{ 'conservation.columns.recorded' | translate }}</label>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <input matInput id="reading-recorded" type="datetime-local" formControlName="recordedAt"/>
+        <mat-error>{{ 'form.required' | translate }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <ng-container formActions>
+      <button mat-flat-button type="submit">{{ 'conservation.reading-form.submit' | translate }}</button>
+      <a mat-button routerLink="/conservation">{{ 'form.cancel' | translate }}</a>
+    </ng-container>
+  </app-form-card>
+</form>

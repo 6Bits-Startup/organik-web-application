@@ -16,4 +16,8 @@ export interface Registration {
   password: string;
   /** Plan chosen on the landing page, when the visitor came from it. */
   plan?: string;
+  /** Phone of the supplier company, required by the OrganiK Platform for suppliers. */
+  phone?: string;
+  /** Product categories the supplier company works with. */
+  categories?: string;
 }

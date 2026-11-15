@@ -1,17 +1,7 @@
-import {Injectable} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {InventoryStore} from '../../inventory/application/inventory.store';
 import {DomainError} from '../../shared/domain/model/domain-error';
-import {Clock} from '../../shared/domain/services/clock';
 import {ProcurementsStore} from './procurements.store';
-
-/** Clock frozen on the day of the approved mockups. */
-@Injectable()
-class FixedClock extends Clock {
-  override now(): Date {
-    return new Date(2026, 9, 2, 12, 0);
-  }
-}
 
 /** Lets the in-memory gateway answer, whatever latency the environment simulates. */
 const settleGateway = () => vi.advanceTimersByTimeAsync(1_000);
@@ -19,7 +9,6 @@ const settleGateway = () => vi.advanceTimersByTimeAsync(1_000);
 /** Signs a seeded user in and loads the order data. */
 async function setup(userId: string): Promise<{store: ProcurementsStore; inventory: InventoryStore}> {
   sessionStorage.setItem('organik.session', userId);
-  TestBed.configureTestingModule({providers: [{provide: Clock, useClass: FixedClock}]});
   const store = TestBed.inject(ProcurementsStore);
   store.loadProcurements();
   await settleGateway();
@@ -27,7 +16,10 @@ async function setup(userId: string): Promise<{store: ProcurementsStore; invento
 }
 
 describe('ProcurementsStore', () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 2, 12, 0));
+  });
 
   afterEach(() => {
     vi.useRealTimers();
@@ -37,7 +29,7 @@ describe('ProcurementsStore', () => {
   it('should show a supplier only its own orders', async () => {
     const {store} = await setup('usr-4');
 
-    expect(store.shipmentItems().map(item => item.id)).toEqual(['ord-01']);
+    expect(store.shipmentItems().map(item => item.id)).toEqual(['ord-01', 'ord-06']);
   });
 
   it('should show the minimarket every order addressed to it with its status', async () => {
@@ -46,7 +38,7 @@ describe('ProcurementsStore', () => {
     expect(store.shipmentItems().map(item => [item.id, item.status])).toEqual(
       expect.arrayContaining([['ord-01', 'pending'], ['ord-02', 'accepted'], ['ord-03', 'rejected'], ['ord-04', 'pending']])
     );
-    expect(store.pendingCount()).toBe(2);
+    expect(store.pendingCount()).toBe(3);
   });
 
   it('should create a pending order without touching the inventory', async () => {
@@ -56,7 +48,7 @@ describe('ProcurementsStore', () => {
     store.createOrder({minimarketId: 'mm-vida-verde', lines: [{offeringId: 'off-p-1', quantity: 20}]}).subscribe();
     await settleGateway();
 
-    expect(store.shipmentItems().find(item => item.id === 'ord-05')).toMatchObject({status: 'pending', createdBy: 'Marco Quispe'});
+    expect(store.shipmentItems().find(item => item.id === 'ord-07')).toMatchObject({status: 'pending', createdBy: 'Marco Quispe'});
     expect(inventory.totalUnits()).toBe(before);
   });
 

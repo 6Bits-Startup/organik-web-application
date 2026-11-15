@@ -9,7 +9,7 @@ export interface UsersResponse {
  * Raw user resource exchanged with the backend.
  */
 export interface UserResource {
-  id: string;
+  id: number;
   fullName: string;
   email: string;
   role: string;

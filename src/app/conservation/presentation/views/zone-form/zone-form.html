@@ -1,0 +1,44 @@
+<form [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-form-card [heading]="'conservation.zone-form.title' | translate">
+    <div class="ok-field">
+      <label for="zone-name">{{ 'conservation.zone-form.name' | translate }}</label>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <input matInput id="zone-name" formControlName="name"/>
+        @if (form.controls.name.hasError('inUse')) {
+          <mat-error>{{ 'conservation.zone-form.name-in-use' | translate }}</mat-error>
+        } @else {
+          <mat-error>{{ 'form.required' | translate }}</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <div class="ok-field">
+      <label for="zone-condition">{{ 'conservation.zone-form.condition' | translate }}</label>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <select matNativeControl id="zone-condition" formControlName="condition">
+          <option value="" disabled>{{ 'form.select' | translate }}</option>
+          @for (condition of storageConditions; track condition) {
+            <option [value]="condition">{{ 'storage.' + condition | translate }}</option>
+          }
+        </select>
+        <mat-error>{{ 'form.required' | translate }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    @if (rangeOf(form.controls.condition.value); as range) {
+      <p>
+        {{ 'conservation.zone-form.range' | translate: {
+          minTemperature: range.minTemperature,
+          maxTemperature: range.maxTemperature,
+          minHumidity: range.minHumidity,
+          maxHumidity: range.maxHumidity
+        } }}
+      </p>
+    }
+
+    <ng-container formActions>
+      <button mat-flat-button type="submit">{{ 'conservation.zone-form.submit' | translate }}</button>
+      <a mat-button routerLink="/conservation">{{ 'form.cancel' | translate }}</a>
+    </ng-container>
+  </app-form-card>
+</form>

@@ -3,6 +3,10 @@
   [heading]="'conservation.heading' | translate"
   [description]="'conservation.description' | translate"
 >
+  @if (canManage()) {
+    <a mat-flat-button routerLink="/conservation/zones/new">{{ 'conservation.new-zone' | translate }}</a>
+    <a mat-flat-button routerLink="/conservation/readings/new">{{ 'conservation.new-reading' | translate }}</a>
+  }
   <a mat-flat-button routerLink="/conservation/alerts">{{ 'conservation.view-alerts' | translate }}</a>
 </app-module-banner>
 

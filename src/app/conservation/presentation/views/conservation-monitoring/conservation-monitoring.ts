@@ -14,6 +14,7 @@ import {
   MatTable
 } from '@angular/material/table';
 import {TranslatePipe} from '@ngx-translate/core';
+import {SessionStore} from '../../../../iam/application/session.store';
 import {ModuleBanner} from '../../../../shared/presentation/components/module-banner/module-banner';
 import {BadgeTone, StatusBadge} from '../../../../shared/presentation/components/status-badge/status-badge';
 import {ConservationStore} from '../../../application/conservation.store';
@@ -52,6 +53,10 @@ const READING_TONE: Readonly<Record<ReadingStatus, BadgeTone>> = {
  */
 export class ConservationMonitoring implements OnInit {
   private readonly store = inject(ConservationStore);
+  private readonly session = inject(SessionStore);
+
+  /** Whether the signed-in user can create zones and record readings. */
+  protected readonly canManage = computed(() => this.session.canManage('/conservation'));
 
   protected readonly columns = ['zone', 'product', 'temperature', 'humidity', 'recorded', 'status'];
   protected readonly readings = this.store.readingItems;

@@ -1,16 +1,6 @@
-import {Injectable} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {DomainError} from '../../shared/domain/model/domain-error';
-import {Clock} from '../../shared/domain/services/clock';
 import {InventoryStore, RegisterStockCommand} from './inventory.store';
-
-/** Clock frozen on the day of the approved mockups. */
-@Injectable()
-class FixedClock extends Clock {
-  override now(): Date {
-    return new Date(2026, 9, 2, 12, 0);
-  }
-}
 
 /** Lets the in-memory gateway answer, whatever latency the environment simulates. */
 const settleGateway = () => vi.advanceTimersByTimeAsync(1_000);
@@ -30,7 +20,7 @@ describe('InventoryStore', () => {
 
   beforeEach(async () => {
     vi.useFakeTimers();
-    TestBed.configureTestingModule({providers: [{provide: Clock, useClass: FixedClock}]});
+    vi.setSystemTime(new Date(2026, 9, 2, 12, 0));
     store = TestBed.inject(InventoryStore);
     store.loadInventory();
     await settleGateway();
@@ -96,13 +86,14 @@ describe('InventoryStore', () => {
     expect(store.items().find(item => item.lotCode === 'LT-188')?.quantity).toBe(90);
   });
 
-  it('should register an offer without discounting the stock and refuse more units than the stock', async () => {
-    store.registerOffer({productId: 'ORG-01', quantity: 50, validUntil: '2026-10-08'}).subscribe();
+  it('should register an offer of a lot without discounting the stock and refuse an unknown lot', async () => {
+    store.registerOffer({lotCode: 'LT-204', price: 4.5, startsOn: '2026-10-02', endsOn: '2026-10-08'}).subscribe();
     await settleGateway();
 
-    expect(store.offers()[0]).toMatchObject({productName: 'Yogurt orgánico', quantity: 50, active: true});
+    expect(store.offers()[0]).toMatchObject({productName: 'Yogurt orgánico', lotCode: 'LT-204', active: true});
+    expect(store.offers()[0].price.amount).toBe(4.5);
     expect(store.stockOf('ORG-01')).toBe(248);
-    expect(() => store.registerOffer({productId: 'ORG-01', quantity: 249, validUntil: '2026-10-08'})).toThrow(DomainError);
+    expect(() => store.registerOffer({lotCode: 'LT-999', price: 4.5, startsOn: '2026-10-02', endsOn: '2026-10-08'})).toThrow(DomainError);
   });
 
   it('should add the lines of an accepted order as lots exactly once per call', async () => {

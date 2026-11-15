@@ -1,19 +1,20 @@
-import {Component, computed, inject, OnInit} from '@angular/core';
-import {AbstractControl, FormArray, NonNullableFormBuilder, ReactiveFormsModule, ValidationErrors, Validators} from '@angular/forms';
+import {Component, computed, effect, inject, OnInit, signal} from '@angular/core';
+import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {Router, RouterLink} from '@angular/router';
 import {MatButton} from '@angular/material/button';
 import {MatError, MatFormField} from '@angular/material/form-field';
 import {MatInput} from '@angular/material/input';
+import {MatSelectModule} from '@angular/material/select';
 import {TranslatePipe} from '@ngx-translate/core';
 import {Notifier} from '../../../../communication/application/notifier';
 import {SessionStore} from '../../../../iam/application/session.store';
 import {FormCard} from '../../../../shared/presentation/components/form-card/form-card';
-import {positiveIntegerValidator} from '../../../../shared/presentation/forms/validators';
+import {POSITIVE_INTEGER_PATTERN} from '../../../../shared/presentation/forms/form-patterns';
 import {SuppliersStore} from '../../../../suppliers/application/suppliers.store';
 import {ProcurementsStore} from '../../../application/procurements.store';
 
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, MatButton, MatFormField, MatError, MatInput, TranslatePipe, FormCard],
+  imports: [ReactiveFormsModule, RouterLink, MatButton, MatFormField, MatError, MatInput, MatSelectModule, TranslatePipe, FormCard],
   selector: 'app-order-form',
   styleUrl: './order-form.css',
   templateUrl: './order-form.html',
@@ -23,7 +24,7 @@ import {ProcurementsStore} from '../../../application/procurements.store';
  * The order stays pending until the administrator of the minimarket answers it.
  */
 export class OrderForm implements OnInit {
-  private readonly fb = inject(NonNullableFormBuilder);
+  private readonly fb = inject(FormBuilder);
   private readonly store = inject(ProcurementsStore);
   private readonly suppliers = inject(SuppliersStore);
   private readonly session = inject(SessionStore);
@@ -36,12 +37,21 @@ export class OrderForm implements OnInit {
   protected readonly catalog = this.suppliers.myOfferings;
 
   protected readonly form = this.fb.group({
-    minimarketId: [this.store.linkedMinimarkets[0].id, Validators.required],
-    lines: this.fb.array([this.newLine()])
+    minimarketId: new FormControl('', {nonNullable: true, validators: Validators.required})
   });
 
-  protected get lines(): FormArray {
-    return this.form.controls.lines;
+  /** One form group per product line of the order. */
+  protected readonly lines = signal([this.newLine()]);
+
+  constructor() {
+    // The first linked minimarket is chosen as soon as the list is loaded.
+    effect(() => {
+      const [first] = this.minimarkets();
+      const control = this.form.controls.minimarketId;
+      if (first && !control.value) {
+        control.setValue(first.id);
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -49,18 +59,18 @@ export class OrderForm implements OnInit {
   }
 
   /** Units the supplier has available for the entry chosen in a line. */
-  protected availableFor(line: AbstractControl): number | null {
-    const offering = this.catalog().find(item => item.id === line.get('offeringId')?.value);
+  protected availableFor(line: ReturnType<OrderForm['newLine']>): number | null {
+    const offering = this.catalog().find(item => item.id === line.controls.offeringId.value);
     return offering ? offering.availableQuantity : null;
   }
 
   protected addLine(): void {
-    this.lines.push(this.newLine());
+    this.lines.update(lines => [...lines, this.newLine()]);
   }
 
   protected removeLine(index: number): void {
-    if (this.lines.length > 1) {
-      this.lines.removeAt(index);
+    if (this.lines().length > 1) {
+      this.lines.update(lines => lines.filter((_, position) => position !== index));
     }
   }
 
@@ -68,17 +78,17 @@ export class OrderForm implements OnInit {
    * Creates the pending order and returns to the list.
    */
   protected save(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.lines().some(line => line.invalid)) {
       this.form.markAllAsTouched();
+      this.lines().forEach(line => line.markAllAsTouched());
       return;
     }
-    const value = this.form.getRawValue();
     this.store
       .createOrder({
-        minimarketId: value.minimarketId,
-        lines: value.lines.map((line: {offeringId: string; quantity: string}) => ({
-          offeringId: line.offeringId,
-          quantity: Number(line.quantity)
+        minimarketId: this.form.getRawValue().minimarketId,
+        lines: this.lines().map(line => ({
+          offeringId: line.getRawValue().offeringId,
+          quantity: Number(line.getRawValue().quantity)
         }))
       })
       .subscribe(order => {
@@ -89,16 +99,19 @@ export class OrderForm implements OnInit {
 
   private newLine() {
     const line = this.fb.group({
-      offeringId: ['', Validators.required],
-      quantity: ['', [Validators.required, positiveIntegerValidator]]
+      offeringId: new FormControl('', {nonNullable: true, validators: Validators.required}),
+      quantity: new FormControl('', {nonNullable: true, validators: [Validators.required, Validators.pattern(POSITIVE_INTEGER_PATTERN)]})
     });
-    line.controls.quantity.addValidators((control: AbstractControl<string>) => this.withinAvailability(line, control));
-    line.controls.offeringId.valueChanges.subscribe(() => line.controls.quantity.updateValueAndValidity());
+    // The units ordered cannot exceed the units the supplier has available for the chosen entry.
+    line.controls.offeringId.valueChanges.subscribe(offeringId => {
+      const offering = this.catalog().find(item => item.id === offeringId);
+      line.controls.quantity.setValidators([
+        Validators.required,
+        Validators.pattern(POSITIVE_INTEGER_PATTERN),
+        ...(offering ? [Validators.max(offering.availableQuantity)] : [])
+      ]);
+      line.controls.quantity.updateValueAndValidity();
+    });
     return line;
-  }
-
-  private withinAvailability(line: AbstractControl, control: AbstractControl<string>): ValidationErrors | null {
-    const available = this.availableFor(line);
-    return available !== null && Number(control.value) > available ? {exceeds: true} : null;
   }
 }

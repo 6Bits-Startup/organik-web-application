@@ -1,11 +1,11 @@
 import {computed, inject, Injectable, signal} from '@angular/core';
-import {forkJoin, map, Observable, of, switchMap, tap} from 'rxjs';
+import {forkJoin, map, Observable, of, ReplaySubject, switchMap, tap} from 'rxjs';
 import {SessionStore} from '../../iam/application/session.store';
 import {ProductsStore} from '../../products/application/products.store';
 import {CalendarDate} from '../../shared/domain/model/calendar-date';
 import {DomainError} from '../../shared/domain/model/domain-error';
+import {Money} from '../../shared/domain/model/money';
 import {Quantity} from '../../shared/domain/model/quantity';
-import {Clock} from '../../shared/domain/services/clock';
 import {ExpirationPolicy} from '../domain/model/expiration-policy';
 import {InventoryEvent, InventoryEventType, WasteCause} from '../domain/model/inventory-event';
 import {Offer} from '../domain/model/offer.entity';
@@ -51,10 +51,12 @@ export interface RegisterWasteCommand {
  * Data collected by the "register offer" form.
  */
 export interface RegisterOfferCommand {
-  productId: string;
-  quantity: number;
+  lotCode: string;
+  price: number;
+  /** First day of the offer in ISO-8601 format (`yyyy-MM-dd`). */
+  startsOn: string;
   /** Last day of the offer in ISO-8601 format (`yyyy-MM-dd`). */
-  validUntil: string;
+  endsOn: string;
 }
 
 /**
@@ -81,20 +83,20 @@ export class InventoryStore {
   private readonly api = inject(InventoryApi);
   private readonly productsStore = inject(ProductsStore);
   private readonly session = inject(SessionStore);
-  private readonly clock = inject(Clock);
 
   private readonly lotsSignal = signal<StockLot[]>([]);
   private readonly eventsSignal = signal<InventoryEvent[]>([]);
   private readonly offersSignal = signal<Offer[]>([]);
   private readonly policySignal = signal(ExpirationPolicy.default());
   private loaded = false;
+  private readonly loadedSubject = new ReplaySubject<void>(1);
 
   /** Policy that classifies lots by their remaining shelf life. */
   readonly policy = this.policySignal.asReadonly();
 
   /** Inventory rows: every lot with its product and expiration status. */
   readonly items = computed<InventoryItem[]>(() => {
-    const today = this.clock.today();
+    const today = CalendarDate.today();
     const policy = this.policySignal();
     return this.lotsSignal().map(lot => ({
       sku: lot.productId,
@@ -148,15 +150,16 @@ export class InventoryStore {
 
   /** Offers registered by the minimarket, the most recent first. */
   readonly offers = computed<OfferItem[]>(() => {
-    const today = this.clock.today();
+    const today = CalendarDate.today();
     return [...this.offersSignal()]
       .reverse()
       .map(offer => ({
         id: offer.id,
         productName: this.productsStore.findProduct(offer.productId)?.name ?? offer.productId,
-        quantity: offer.quantity.value,
-        validUntil: offer.validUntil,
-        createdBy: offer.createdBy,
+        lotCode: offer.lotCode,
+        price: offer.price,
+        startsOn: offer.startsOn,
+        endsOn: offer.endsOn,
         active: offer.isActiveOn(today)
       }));
   });
@@ -164,15 +167,18 @@ export class InventoryStore {
   /**
    * Loads the stock lots, the history and the offers (and the products they refer to) once.
    */
-  loadInventory(): void {
+  loadInventory(): Observable<void> {
     this.productsStore.loadProducts();
-    if (this.loaded) {
-      return;
+    if (!this.loaded) {
+      this.loaded = true;
+      this.api.getStockLots().subscribe(lots => {
+        this.lotsSignal.set(lots);
+        this.loadedSubject.next();
+      });
+      this.api.getEvents().subscribe(events => this.eventsSignal.set(events));
+      this.api.getOffers().subscribe(offers => this.offersSignal.set(offers));
     }
-    this.loaded = true;
-    this.api.getStockLots().subscribe(lots => this.lotsSignal.set(lots));
-    this.api.getEvents().subscribe(events => this.eventsSignal.set(events));
-    this.api.getOffers().subscribe(offers => this.offersSignal.set(offers));
+    return this.loadedSubject.asObservable();
   }
 
   /**
@@ -224,7 +230,7 @@ export class InventoryStore {
       throw new DomainError(`Lot ${command.lotCode} is already registered`);
     }
     const expiresOn = CalendarDate.of(command.expiresOn);
-    if (expiresOn.isBefore(this.clock.today())) {
+    if (expiresOn.isBefore(CalendarDate.today())) {
       throw new DomainError('A received lot cannot be already expired');
     }
     const lot = new StockLot({
@@ -235,7 +241,8 @@ export class InventoryStore {
       location: command.location,
       notes: command.notes
     });
-    return this.api.createStockLot(lot).pipe(
+    const minimumStock = this.productsStore.findProduct(lot.productId)?.minimumStock.value ?? 0;
+    return this.api.createStockLot(lot, minimumStock).pipe(
       tap(created => this.lotsSignal.update(current => [...current, created])),
       switchMap(created =>
         this.record('registered', created.productId, created.lotCode, created.quantity.value, '', 'Lot received').pipe(map(() => created))
@@ -280,7 +287,7 @@ export class InventoryStore {
     const lot = this.requireLot(command.lotCode);
     const units = Quantity.of(command.quantity);
     const remaining = lot.discard(units);
-    return this.replaceLot(remaining).pipe(
+    return this.replaceLot(remaining, command.cause).pipe(
       switchMap(updated =>
         this.record('waste', updated.productId, updated.lotCode, units.value, command.cause, `${units.value} units lost`).pipe(map(() => updated))
       )
@@ -288,28 +295,30 @@ export class InventoryStore {
   }
 
   /**
-   * Puts units of a product on offer. The offer does not discount the stock.
+   * Puts the units of a lot on offer at a special price during a period. The offer does not discount the stock.
    *
    * @param command - Data collected by the form.
-   * @throws DomainError if the product has fewer units than offered or the offer is invalid.
+   * @throws DomainError if the lot does not exist or has no stock, or the offer is invalid.
    */
   registerOffer(command: RegisterOfferCommand): Observable<Offer> {
-    const units = Quantity.of(command.quantity);
-    if (units.value > this.stockOf(command.productId)) {
-      throw new DomainError('An offer cannot have more units than the available stock');
+    const lot = this.requireLot(command.lotCode);
+    if (lot.quantity.value < 1) {
+      throw new DomainError('An offer needs a lot with stock');
     }
     const offer = new Offer({
       id: `off-${this.offersSignal().length + 1}`,
-      productId: command.productId,
-      quantity: units,
-      validUntil: CalendarDate.of(command.validUntil),
-      createdBy: this.actorName(),
-      createdOn: this.clock.today()
+      lotCode: lot.lotCode,
+      productId: lot.productId,
+      price: Money.of(command.price),
+      startsOn: CalendarDate.of(command.startsOn),
+      endsOn: CalendarDate.of(command.endsOn)
     });
     return this.api.createOffer(offer).pipe(
       tap(created => this.offersSignal.update(current => [...current, created])),
       switchMap(created =>
-        this.record('offer', created.productId, null, units.value, '', `Offer valid until ${created.validUntil}`).pipe(map(() => created))
+        this.record('offer', created.productId, created.lotCode, null, '', `Offer at ${created.price.format()} until ${created.endsOn}`).pipe(
+          map(() => created)
+        )
       )
     );
   }
@@ -335,11 +344,11 @@ export class InventoryStore {
           notes: `Order ${orderId}`
         })
     );
-    return forkJoin(lots.map(lot => this.api.createStockLot(lot))).pipe(
-      tap(created => this.lotsSignal.update(current => [...current, ...created])),
-      switchMap(created =>
+    return this.api.receiveOrder(lots).pipe(
+      tap(received => this.lotsSignal.set(received)),
+      switchMap(() =>
         forkJoin(
-          created.map(lot => this.record('order-received', lot.productId, lot.lotCode, lot.quantity.value, '', `Order ${orderId} accepted`))
+          lots.map(lot => this.record('order-received', lot.productId, lot.lotCode, lot.quantity.value, '', `Order ${orderId} accepted`))
         )
       ),
       map(() => undefined)
@@ -373,9 +382,9 @@ export class InventoryStore {
     return lot;
   }
 
-  private replaceLot(lot: StockLot): Observable<StockLot> {
+  private replaceLot(lot: StockLot, wasteCause?: string): Observable<StockLot> {
     return this.api
-      .updateStockLot(lot)
+      .updateStockLot(lot, wasteCause)
       .pipe(tap(updated => this.lotsSignal.update(current => current.map(item => (item.lotCode === updated.lotCode ? updated : item)))));
   }
 
@@ -410,7 +419,7 @@ export class InventoryStore {
       cause,
       detail,
       actorName: this.actorName(),
-      occurredOn: this.clock.today()
+      occurredOn: CalendarDate.today()
     });
     return this.api.createEvent(event).pipe(tap(created => this.eventsSignal.update(current => [...current, created])));
   }

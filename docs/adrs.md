@@ -16,7 +16,7 @@ OrganiK covers several business capabilities (inventory, product catalog, supply
 Structure the frontend according to Domain-Driven Design tactical patterns, with **one folder per bounded context** under `src/app/`:
 - **Bounded Contexts**: `iam`, `profiles`, `dashboard`, `analytics`, `inventory`, `products`, `requisition`, `procurements`, `suppliers`, `conservation`, `communication` and `shared` (Shared Kernel).
 - **Layered Architecture per Context**, applying only the layers a context needs:
-  - `domain`: entities, value objects, domain services and domain errors, free from Angular, HTTP and UI dependencies.
+  - `domain`: entities, value objects and domain errors under `domain/model`, free from Angular, HTTP and UI dependencies.
   - `infrastructure`: gateways, assemblers, resource contracts and seeds that talk to the backend.
   - `application`: signal-based stores that orchestrate use cases and build read models.
   - `presentation`: standalone components, routed views, forms and the routes of the context.
@@ -71,7 +71,7 @@ Each context keeps its wire contracts in `*-response.ts` files (`*Resource`, `*R
 ## ADR 004: Value Objects and a Clock Port in the Shared Kernel
 
 ### Status
-Accepted
+Accepted. The `Clock` port is superseded by ADR 012.
 
 ### Context
 Quantities, money, percentages, e-mail addresses and dates appear in several contexts, and expiration rules depend on the current day, which makes tests fragile.
@@ -199,7 +199,7 @@ The domain model, the stores and the gateways need fast, deterministic unit test
 ### Decision
 Use Vitest through the Angular `unit-test` builder (`ng test`) with `jsdom`:
 - Domain entities and value objects are tested in isolation.
-- Stores are tested with `TestBed`, a frozen `Clock` and fake timers for the simulated gateway latency.
+- Stores are tested with `TestBed`, a frozen system date (`vi.setSystemTime`) and fake timers for the simulated gateway latency.
 - The `FakeApi` client is tested with `HttpTestingController`.
 
 ### Consequences
@@ -225,3 +225,27 @@ Deploy both to Firebase Hosting in the same project (`organik-d6e58`) as two sit
 ### Consequences
 - **Positive**: Free hosting, independent deployments and clear separation of the public and private areas.
 - **Negative**: The two products must agree on their public addresses.
+
+---
+
+## ADR 012: No Domain Services; Derived Data Lives in Entities and Stores
+
+### Status
+Accepted. Supersedes the `Clock` port of ADR 004.
+
+### Context
+The reference repositories of the course keep the domain layer limited to `domain/model` (entities, commands and value objects) and compute derived data in the signal stores of the `application` layer. The project had three extra pieces under `domain/services`: `ConservationAlertService`, `SupplierSuggestionService` and an Angular `Clock` port, which was also the only file of the domain layer that imported Angular.
+
+### Decision
+- Remove the `domain/services` folders.
+- Compute the conservation alerts and the supplier suggestions as `computed` signals in `ConservationStore` and `SuppliersStore`.
+- Remove `Clock` and read the current day with `CalendarDate.today()`; the store specs freeze the date with `vi.setSystemTime`.
+- Show the list tables with `MatTableDataSource`, `MatSort` and `MatPaginator`, read through `viewChild` as in the course examples.
+- Use `provideRouter(routes)` without view transitions, anchor scrolling or component input binding (this supersedes the router features of ADR 007): the forms read route and query values with `ActivatedRoute`, and the module guard is a `CanActivateFn` kept in `iam/infrastructure/iam.guard.ts`.
+- Build forms with `FormBuilder` and `FormControl`, validate formats and limits with `Validators.pattern`, `max` and `min` (their limits are updated when the field they depend on changes), and keep the rules that compare with today's date or with a list as short functions in the `validators` list.
+- Fill the edit forms with a subscription to the route and to the load methods of the stores, which now return a stream that emits when the data is available, instead of an `effect`.
+- Ask for the reason of a rejected order in a `MatDialog` (the `RejectOrder` component, opened with `MAT_DIALOG_DATA` as in the course `SourceSummary`), and use `mat-select` in every form select, show the days with `DatePipe` (`yyyy-MM-dd`), switch the fake API on from `environment` (the unit tests build with `environment.unit.ts`, whose address is empty) and restore the saved language and settings from the root component instead of an app initializer.
+
+### Consequences
+- **Positive**: The domain layer has no Angular imports and the structure matches the course repositories.
+- **Negative**: The alert and suggestion rules are tested through their stores instead of in isolation, and time can only be controlled with the test runner timers.

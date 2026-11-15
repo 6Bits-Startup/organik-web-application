@@ -1,8 +1,8 @@
-import {Component, inject, OnInit} from '@angular/core';
-import {DecimalPipe} from '@angular/common';
+import {Component, computed, inject, OnInit} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {MatIcon} from '@angular/material/icon';
 import {TranslatePipe} from '@ngx-translate/core';
+import {SessionStore} from '../../../../iam/application/session.store';
 import {KpiCard} from '../../../../shared/presentation/components/kpi-card/kpi-card';
 import {DashboardStore} from '../../../application/dashboard.store';
 
@@ -16,7 +16,6 @@ interface OverviewLink {
 
 @Component({
   imports: [
-    DecimalPipe,
     RouterLink,
     MatIcon,
     TranslatePipe,
@@ -31,12 +30,16 @@ interface OverviewLink {
  */
 export class Dashboard implements OnInit {
   private readonly store = inject(DashboardStore);
+  private readonly session = inject(SessionStore);
 
   protected readonly summary = this.store.summary;
   protected readonly activity = this.store.activity;
   protected readonly isSupplier = this.store.isSupplier;
   protected readonly supplierSummary = this.store.supplierSummary;
   protected readonly attention = this.store.attention;
+
+  /** Whether the signed-in user is the administrator who accepts or rejects the orders. */
+  protected readonly decidesOrders = computed(() => !!this.session.currentUser()?.canDecideOrders);
 
   /** Modules summarized in the "operational overview" panel. */
   protected readonly overview: readonly OverviewLink[] = [

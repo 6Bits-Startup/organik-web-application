@@ -243,13 +243,15 @@
     },
     "offer-form": {
       "title": "Registrar oferta",
-      "quantity": "Unidades en oferta",
-      "valid-until": "Vigente hasta",
-      "available": "{{units}} unidades disponibles",
-      "exceeds": "Las unidades superan el stock disponible",
-      "past": "La oferta no puede terminar en el pasado",
+      "past": "La oferta no puede empezar en el pasado",
       "submit": "Registrar oferta",
-      "saved": "Oferta registrada"
+      "saved": "Oferta registrada",
+      "lot": "Lote en oferta",
+      "price": "Precio de oferta (S/)",
+      "starts-on": "Desde",
+      "ends-on": "Hasta",
+      "invalid-price": "Ingresa un precio mayor a cero",
+      "before-start": "La oferta no puede terminar antes de empezar"
     },
     "offer-status": {
       "active": "Vigente",
@@ -274,7 +276,9 @@
       "actor": "Realizado por",
       "valid-until": "Vigente hasta",
       "empty": "Aún no hay movimientos.",
-      "offers-empty": "Aún no hay ofertas."
+      "offers-empty": "Aún no hay ofertas.",
+      "price": "Precio",
+      "period": "Vigencia"
     }
   },
   "requests": {
@@ -318,6 +322,19 @@
       "expiration": "Vencimiento próximo",
       "temperature": "Temperatura fuera de rango",
       "minimum-stock": "Stock mínimo alcanzado"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "unread": "{{count}} sin leer",
+      "mark-as-read": "Marcar como leída",
+      "empty": "No hay notificaciones.",
+      "types": {
+        "expiration": "Vencimiento",
+        "conservation": "Conservación",
+        "low-stock": "Stock bajo",
+        "replenishment": "Reposición",
+        "order": "Pedido"
+      }
     }
   },
   "conservation": {
@@ -347,7 +364,8 @@
     "no-readings": "Aún no hay lecturas para: {{zones}}.",
     "sources": {
       "simulated": "Simulada",
-      "sensor": "Sensor"
+      "sensor": "Sensor",
+      "manual": "Manual"
     },
     "history": {
       "title": "Historial de lecturas",
@@ -358,6 +376,24 @@
       "humidity": "Humedad",
       "source": "Origen",
       "empty": "No hay lecturas en este rango."
+    },
+    "new-zone": "Nueva zona",
+    "new-reading": "Registrar lectura",
+    "zone-form": {
+      "title": "Nueva zona de almacenamiento",
+      "name": "Nombre de la zona",
+      "condition": "Condición de almacenamiento",
+      "range": "Rango que debe mantener: {{minTemperature}} a {{maxTemperature}} °C y {{minHumidity}} a {{maxHumidity}} % de humedad.",
+      "name-in-use": "Ya existe una zona con ese nombre",
+      "submit": "Crear zona",
+      "saved": "Zona {{name}} creada"
+    },
+    "reading-form": {
+      "title": "Registrar lectura",
+      "invalid-temperature": "Ingresa una temperatura entre -50 y 60 °C",
+      "invalid-humidity": "Ingresa una humedad entre 0 y 100 %",
+      "submit": "Registrar lectura",
+      "saved": "Lectura registrada"
     }
   },
   "analytics": {

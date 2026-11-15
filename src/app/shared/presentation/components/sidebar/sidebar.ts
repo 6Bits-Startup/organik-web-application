@@ -37,10 +37,13 @@ export class Sidebar {
 
   /**
    * Ends the session and goes back to the login.
+   *
+   * @remarks
+   * The page is reloaded so that the next user does not see the data the stores loaded for this one.
    */
   protected logout(): void {
     this.auth.logout();
-    this.router.navigate(['/login']).then();
+    this.router.navigate(['/login']).then(() => location.reload());
   }
   /** Emits when the user follows a navigation link. */
   navigated = output<void>();
